@@ -137,6 +137,8 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #define TOTAL_ANALOG_PINS       8
 #define TOTAL_PINS              22 // 14 digital + 8 analog
 #endif
+//#define VERSION_BLINK_PIN       13
+// KTOWN: Changed to 2 since 13 is required for SPI on the nRF8001!
 #define VERSION_BLINK_PIN       13
 #define IS_PIN_DIGITAL(p)       ((p) >= 2 && (p) <= 19)
 #define IS_PIN_ANALOG(p)        ((p) >= 14 && (p) < 14 + TOTAL_ANALOG_PINS)
