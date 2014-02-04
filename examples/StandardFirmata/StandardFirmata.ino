@@ -645,21 +645,25 @@ void systemResetCallback()
 
 void setup() 
 {
-  Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
-
-  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-  Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
-  Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
-  Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-  Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-  Firmata.attach(START_SYSEX, sysexCallback);
-  Firmata.attach(SYSTEM_RESET, systemResetCallback);
-
   Serial.begin(115200);
   Serial.println(F("Arduino setup"));
-
-  Firmata.begin(uart);
-  systemResetCallback();  // reset to default config
+  uart.begin();
+  
+//  Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+//
+//  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
+//  Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
+//  Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
+//  Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
+//  Firmata.attach(SET_PIN_MODE, setPinModeCallback);
+//  Firmata.attach(START_SYSEX, sysexCallback);
+//  Firmata.attach(SYSTEM_RESET, systemResetCallback);
+//
+//  Serial.begin(115200);
+//  Serial.println(F("Arduino setup"));
+//
+//  Firmata.begin(uart);
+//  systemResetCallback();  // reset to default config
 }
 
 /*==============================================================================
@@ -667,41 +671,43 @@ void setup()
  *============================================================================*/
 void loop() 
 {
-  byte pin, analogPin;
-
-  /* DIGITALREAD - as fast as possible, check for changes and output them to the
-   * FTDI buffer using Serial.print()  */
-  checkDigitalInputs();  
-
-  /* Handle any buffered ACI events from BLE */
   uart.pollACI();
-
-  /* SERIALREAD - processing incoming messagse as soon as possible, while still
-   * checking digital inputs.  */
-  while(Firmata.available())
-    Firmata.processInput();
-
-  /* SEND FTDI WRITE BUFFER - make sure that the FTDI buffer doesn't go over
-   * 60 bytes. use a timer to sending an event character every 4 ms to
-   * trigger the buffer to dump. */
-
-  currentMillis = millis();
-  if (currentMillis - previousMillis > samplingInterval) {
-    previousMillis += samplingInterval;
-    /* ANALOGREAD - do all analogReads() at the configured sampling interval */
-    for(pin=0; pin<TOTAL_PINS; pin++) {
-      if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
-        analogPin = PIN_TO_ANALOG(pin);
-        if (analogInputsToReport & (1 << analogPin)) {
-          Firmata.sendAnalog(analogPin, analogRead(analogPin));
-        }
-      }
-    }
-    // report i2c data for all device with read continuous mode enabled
-    if (queryIndex > -1) {
-      for (byte i = 0; i < queryIndex + 1; i++) {
-        readAndReportData(query[i].addr, query[i].reg, query[i].bytes);
-      }
-    }
-  }
+  
+//  byte pin, analogPin;
+//
+//  /* DIGITALREAD - as fast as possible, check for changes and output them to the
+//   * FTDI buffer using Serial.print()  */
+//  checkDigitalInputs();  
+//
+//  /* Handle any buffered ACI events from BLE */
+//  uart.pollACI();
+//
+//  /* SERIALREAD - processing incoming messagse as soon as possible, while still
+//   * checking digital inputs.  */
+//  while(Firmata.available())
+//    Firmata.processInput();
+//
+//  /* SEND FTDI WRITE BUFFER - make sure that the FTDI buffer doesn't go over
+//   * 60 bytes. use a timer to sending an event character every 4 ms to
+//   * trigger the buffer to dump. */
+//
+//  currentMillis = millis();
+//  if (currentMillis - previousMillis > samplingInterval) {
+//    previousMillis += samplingInterval;
+//    /* ANALOGREAD - do all analogReads() at the configured sampling interval */
+//    for(pin=0; pin<TOTAL_PINS; pin++) {
+//      if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
+//        analogPin = PIN_TO_ANALOG(pin);
+//        if (analogInputsToReport & (1 << analogPin)) {
+//          Firmata.sendAnalog(analogPin, analogRead(analogPin));
+//        }
+//      }
+//    }
+//    // report i2c data for all device with read continuous mode enabled
+//    if (queryIndex > -1) {
+//      for (byte i = 0; i < queryIndex + 1; i++) {
+//        readAndReportData(query[i].addr, query[i].reg, query[i].bytes);
+//      }
+//    }
+//  }
 }
