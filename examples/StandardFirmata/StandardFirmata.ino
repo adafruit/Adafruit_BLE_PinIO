@@ -608,62 +608,60 @@ void disableI2CPins() {
 
 void systemResetCallback()
 {
-  // initialize a defalt state
-  // TODO: option to load config from EEPROM instead of default
-  if (isI2CEnabled) {
-  	disableI2CPins();
-  }
-  for (byte i=0; i < TOTAL_PORTS; i++) {
-    reportPINs[i] = false;      // by default, reporting off
-    portConfigInputs[i] = 0;	// until activated
-    previousPINs[i] = 0;
-  }
-  // pins with analog capability default to analog input
-  // otherwise, pins default to digital output
-  for (byte i=0; i < TOTAL_PINS; i++) {
-    if (IS_PIN_ANALOG(i)) {
-      // turns off pullup, configures everything
-      setPinModeCallback(i, ANALOG);
-    } else {
-      // sets the output to 0, configures portConfigInputs
-      setPinModeCallback(i, OUTPUT);
-    }
-  }
-  // by default, do not report any analog inputs
-  analogInputsToReport = 0;
-
-  /* send digital inputs to set the initial state on the host computer,
-   * since once in the loop(), this firmware will only send on change */
-  /*
-  TODO: this can never execute, since no pins default to digital input
-        but it will be needed when/if we support EEPROM stored config
-  for (byte i=0; i < TOTAL_PORTS; i++) {
-    outputPort(i, readPort(i, portConfigInputs[i]), true);
-  }
-  */
+  /* ToDo: Implement this but the nRF8001 uses many of these pins! */
+  
+//  // initialize a defalt state
+//  // TODO: option to load config from EEPROM instead of default
+//  if (isI2CEnabled) {
+//  	disableI2CPins();
+//  }
+//  for (byte i=0; i < TOTAL_PORTS; i++) {
+//    reportPINs[i] = false;      // by default, reporting off
+//    portConfigInputs[i] = 0;	// until activated
+//    previousPINs[i] = 0;
+//  }
+//  // pins with analog capability default to analog input
+//  // otherwise, pins default to digital output
+//  for (byte i=0; i < TOTAL_PINS; i++) {
+//    if (IS_PIN_ANALOG(i)) {
+//      // turns off pullup, configures everything
+//      setPinModeCallback(i, ANALOG);
+//    } else {
+//      // sets the output to 0, configures portConfigInputs
+//      setPinModeCallback(i, OUTPUT);
+//    }
+//  }
+//  // by default, do not report any analog inputs
+//  analogInputsToReport = 0;
+//
+//  /* send digital inputs to set the initial state on the host computer,
+//   * since once in the loop(), this firmware will only send on change */
+//  /*
+//  TODO: this can never execute, since no pins default to digital input
+//        but it will be needed when/if we support EEPROM stored config
+//  for (byte i=0; i < TOTAL_PORTS; i++) {
+//    outputPort(i, readPort(i, portConfigInputs[i]), true);
+//  }
+//  */
 }
 
 void setup() 
 {
+  Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+
+  Firmata.attach(ANALOG_MESSAGE,  analogWriteCallback);
+  Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
+  Firmata.attach(REPORT_ANALOG,   reportAnalogCallback);
+  Firmata.attach(REPORT_DIGITAL,  reportDigitalCallback);
+  Firmata.attach(SET_PIN_MODE,    setPinModeCallback);
+  Firmata.attach(START_SYSEX,     sysexCallback);
+  Firmata.attach(SYSTEM_RESET,    systemResetCallback);
+
   Serial.begin(115200);
   Serial.println(F("Arduino setup"));
-  uart.begin();
-  
-//  Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
-//
-//  Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-//  Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
-//  Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
-//  Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-//  Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-//  Firmata.attach(START_SYSEX, sysexCallback);
-//  Firmata.attach(SYSTEM_RESET, systemResetCallback);
-//
-//  Serial.begin(115200);
-//  Serial.println(F("Arduino setup"));
-//
-//  Firmata.begin(uart);
-//  systemResetCallback();  // reset to default config
+
+  Firmata.begin(uart);
+  systemResetCallback();  // reset to default config
 }
 
 /*==============================================================================
@@ -671,16 +669,17 @@ void setup()
  *============================================================================*/
 void loop() 
 {
+  // Handle any buffered ACI events from BLE
+  // ---------------------------------------
   uart.pollACI();
-  
+
+//  // Process Firmata Messages, etc.
+//  // ------------------------------
 //  byte pin, analogPin;
 //
 //  /* DIGITALREAD - as fast as possible, check for changes and output them to the
 //   * FTDI buffer using Serial.print()  */
-//  checkDigitalInputs();  
-//
-//  /* Handle any buffered ACI events from BLE */
-//  uart.pollACI();
+//  checkDigitalInputs();
 //
 //  /* SERIALREAD - processing incoming messagse as soon as possible, while still
 //   * checking digital inputs.  */
