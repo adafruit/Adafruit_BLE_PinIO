@@ -140,6 +140,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
   if(forceSend || previousPINs[portNumber] != portValue) {
+    Serial.println(F("Sending update"));
     BLE_Firmata.sendDigitalPort(portNumber, portValue);
     previousPINs[portNumber] = portValue;
   }
@@ -153,22 +154,14 @@ void checkDigitalInputs(void)
   /* Using non-looping code allows constants to be given to readPort().
    * The compiler will apply substantial optimizations if the inputs
    * to readPort() are compile-time constants. */
-  if (TOTAL_PORTS > 0 && reportPINs[0]) outputPort(0, readPort(0, portConfigInputs[0]), false);
-  if (TOTAL_PORTS > 1 && reportPINs[1]) outputPort(1, readPort(1, portConfigInputs[1]), false);
-  if (TOTAL_PORTS > 2 && reportPINs[2]) outputPort(2, readPort(2, portConfigInputs[2]), false);
-  if (TOTAL_PORTS > 3 && reportPINs[3]) outputPort(3, readPort(3, portConfigInputs[3]), false);
-  if (TOTAL_PORTS > 4 && reportPINs[4]) outputPort(4, readPort(4, portConfigInputs[4]), false);
-  if (TOTAL_PORTS > 5 && reportPINs[5]) outputPort(5, readPort(5, portConfigInputs[5]), false);
-  if (TOTAL_PORTS > 6 && reportPINs[6]) outputPort(6, readPort(6, portConfigInputs[6]), false);
-  if (TOTAL_PORTS > 7 && reportPINs[7]) outputPort(7, readPort(7, portConfigInputs[7]), false);
-  if (TOTAL_PORTS > 8 && reportPINs[8]) outputPort(8, readPort(8, portConfigInputs[8]), false);
-  if (TOTAL_PORTS > 9 && reportPINs[9]) outputPort(9, readPort(9, portConfigInputs[9]), false);
-  if (TOTAL_PORTS > 10 && reportPINs[10]) outputPort(10, readPort(10, portConfigInputs[10]), false);
-  if (TOTAL_PORTS > 11 && reportPINs[11]) outputPort(11, readPort(11, portConfigInputs[11]), false);
-  if (TOTAL_PORTS > 12 && reportPINs[12]) outputPort(12, readPort(12, portConfigInputs[12]), false);
-  if (TOTAL_PORTS > 13 && reportPINs[13]) outputPort(13, readPort(13, portConfigInputs[13]), false);
-  if (TOTAL_PORTS > 14 && reportPINs[14]) outputPort(14, readPort(14, portConfigInputs[14]), false);
-  if (TOTAL_PORTS > 15 && reportPINs[15]) outputPort(15, readPort(15, portConfigInputs[15]), false);
+  for (uint8_t i=0; i<TOTAL_PORTS; i++) {
+    if (reportPINs[i]) {
+    //  Serial.print("Reporting on port"); Serial.println(i);
+      uint8_t x = readPort(i, portConfigInputs[i]);
+    //  Serial.print("Read 0x"); Serial.println(x, HEX);
+      outputPort(i, x, false);
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -208,9 +201,16 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case INPUT:
     if (IS_PIN_DIGITAL(pin)) {
+      Serial.println("input");
       pinMode(PIN_TO_DIGITAL(pin), INPUT); // disable output driver
       digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
       pinConfig[pin] = INPUT;
+      
+      // MEME update so we have an update report
+      uint8_t tempport = pin/8;
+      uint8_t temppin = reportPINs[tempport];
+      reportDigitalCallback(tempport, temppin | (1<<(pin % 8)));
+      //
     }
     break;
   case OUTPUT:
@@ -243,7 +243,7 @@ void setPinModeCallback(byte pin, int mode)
     }
     break;
   default:
-    BLE_Firmata.sendString("Unknown pin mode"); // TODO: put error msgs in EEPROM
+    Serial.print(F("Unknown pin mode")); // TODO: put error msgs in EEPROM
   }
   // TODO: save status to EEPROM here, if changed
 }
@@ -286,6 +286,7 @@ void digitalWriteCallback(byte port, int value)
       }
       mask = mask << 1;
     }
+    Serial.println(F("Write digital"));
     writePort(port, (byte)value, pinWriteMask);
   }
 }
@@ -311,6 +312,7 @@ void reportAnalogCallback(byte analogPin, int value)
 void reportDigitalCallback(byte port, int value)
 {
   if (port < TOTAL_PORTS) {
+    Serial.print("Report 0x"); Serial.print(value, HEX); Serial.print(" digital on "); Serial.println(port);
     reportPINs[port] = (byte)value;
   }
   // do not disable analog reporting on these 8 pins, to allow some
@@ -636,6 +638,8 @@ void setup()
   Serial.println("Begin firmata");
   BLE_Firmata.begin();
   systemResetCallback();  // reset to default config
+  
+
 }
 
 /*==============================================================================
@@ -646,9 +650,20 @@ void loop()
   BLEserial.pollACI();
   if (BLEserial.getState() != ACI_EVT_CONNECTED) {
       Serial.print("!");
+      delay(100);
       return;
   }
 
+  if (Serial.available()) {
+    BLEserial.write(Serial.read());
+
+  }
+  pinMode(4, INPUT);
+  if (! digitalRead(4)) {
+     uint8_t foo[3] = {'a', 'b', 'c'};
+     BLEserial.write(foo, 3); 
+    delay(500);  
+  }
   byte pin, analogPin;
 
   /* DIGITALREAD - as fast as possible, check for changes and output them to the
