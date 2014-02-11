@@ -45,7 +45,7 @@ void BLE_FirmataClass::endSysex(void)
 //* Constructors
 //******************************************************************************
 
-BLE_FirmataClass::BLE_FirmataClass(Stream &s) : FirmataSerial(s)
+BLE_FirmataClass::BLE_FirmataClass(Adafruit_BLE_UART &s) : FirmataSerial(s)
 {
   firmwareVersionCount = 0;
   systemReset();
@@ -63,7 +63,7 @@ void BLE_FirmataClass::begin(void)
   printFirmwareVersion();
 }
 
-void BLE_FirmataClass::begin(Stream &s)
+void BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
 {
   FirmataSerial = s;
   systemReset();
@@ -173,7 +173,7 @@ void BLE_FirmataClass::processInput(void)
     
   if (inputData == -1) return;
 
-  Serial.print("0x"); Serial.print(inputData, HEX); Serial.print(" ");
+  Serial.print("0x"); Serial.print(inputData, HEX); Serial.println(" ");
 
   if (parsingSysex) {
     if(inputData == END_SYSEX) {
@@ -293,9 +293,13 @@ void BLE_FirmataClass::sendDigital(byte pin, int value)
 // send an 8-bit port in a single digital message (protocol v2)
 void BLE_FirmataClass::sendDigitalPort(byte portNumber, int portData)
 {
-  FirmataSerial.write(DIGITAL_MESSAGE | (portNumber & 0xF));
-  FirmataSerial.write((byte)portData % 128); // Tx bits 0-6
-  FirmataSerial.write(portData >> 7);  // Tx bits 7-13
+  // create a three byte buffer
+  uint8_t sendbuffer[3];
+
+  sendbuffer[0] = DIGITAL_MESSAGE | (portNumber & 0xF);
+  sendbuffer[1] = (byte)portData % 128; // Tx bits 0-6
+  sendbuffer[2] = portData >> 7;  // Tx bits 7-13
+  FirmataSerial.write(sendbuffer, 3);
 }
 
 

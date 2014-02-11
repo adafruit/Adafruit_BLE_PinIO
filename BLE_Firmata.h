@@ -13,6 +13,7 @@
 #ifndef BLE_Firmata_h
 #define BLE_Firmata_h
 
+#include "Adafruit_BLE_UART.h"
 #include "Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
 
 // move the following defines to Firmata.h?
@@ -100,13 +101,12 @@ extern "C" {
 class BLE_FirmataClass
 {
 public:
-	BLE_FirmataClass(Stream &s);
+  BLE_FirmataClass(Adafruit_BLE_UART &s);
 /* Arduino constructors */
     void begin();
-    void begin(long);
-    void begin(Stream &s);
+    void begin(Adafruit_BLE_UART &s);
 /* querying functions */
-	void printVersion(void);
+    void printVersion(void);
     void blinkVersion(void);
     void printFirmwareVersion(void);
   //void setFirmwareVersion(byte major, byte minor);  // see macro below
@@ -129,7 +129,7 @@ public:
     void detach(byte command);
 
 private:
-    Stream &FirmataSerial;
+    Adafruit_BLE_UART &FirmataSerial;
 /* firmware name and version */
     byte firmwareVersionCount;
     byte *firmwareVersionVector;
