@@ -30,34 +30,25 @@
  */
 
 #include <Servo.h>
-#include <SPI.h>
-#include <boards.h>
-#include <ble_system.h>
-#include <lib_aci.h>
-#include <aci_setup.h>
-#include <aci_evts.h>
-#include <Adafruit_BLE_UART.h>
-#include <uart/services.h> 
 #include <Wire.h>
-#include <BLEFirmata.h>
+#include <SPI.h>
+#include <BLE_Firmata.h>
+#include "Adafruit_BLE_UART.h"
 
-void aciCallback(aci_evt_opcode_t event);
-void rxCallback(uint8_t *buffer, uint8_t len);
+// Connect CLK/MISO/MOSI to hardware SPI
+// e.g. On UNO & compatible: CLK = 13, MISO = 12, MOSI = 11
+#define ADAFRUITBLE_REQ 10
+#define ADAFRUITBLE_RDY 2     // This should be an interrupt pin, on Uno thats #2 or #3
+#define ADAFRUITBLE_RST 9
 
-Adafruit_BLE_UART uart = Adafruit_BLE_UART(aciCallback, rxCallback, false);
+// so we have digital 3-8 and analog 0-6
 
-// move the following defines to Firmata.h?
-#define I2C_WRITE B00000000
-#define I2C_READ B00001000
-#define I2C_READ_CONTINUOUSLY B00010000
-#define I2C_STOP_READING B00011000
-#define I2C_READ_WRITE_MODE_MASK B00011000
-#define I2C_10BIT_ADDRESS_MODE_MASK B00100000
+Adafruit_BLE_UART BLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY, ADAFRUITBLE_RST);
 
-#define MAX_QUERIES 8
-#define MINIMUM_SAMPLING_INTERVAL 10
 
-#define REGISTER_NOT_SPECIFIED -1
+// make one instance for the user to use
+BLE_FirmataClass BLE_Firmata(BLEserial);
+
 
 /*==============================================================================
  * GLOBAL VARIABLES
@@ -96,54 +87,6 @@ signed char queryIndex = -1;
 unsigned int i2cReadDelayTime = 0;  // default delay time between i2c read request and Wire.requestFrom()
 
 Servo servos[MAX_SERVOS];
-
-/*==============================================================================
- * Adafruit_BLE_UART FUNCTIONS
- *============================================================================*/
-
-/**************************************************************************/
-/*!
-    This function is called whenever select ACI events happen
-*/
-/**************************************************************************/
-void aciCallback(aci_evt_opcode_t event)
-{
-  switch(event)
-  {
-    case ACI_EVT_DEVICE_STARTED:
-      Serial.println(F("Advertising started"));
-      break;
-    case ACI_EVT_CONNECTED:
-      Serial.println(F("Connected!"));
-      break;
-    case ACI_EVT_DISCONNECTED:
-      Serial.println(F("Disconnected or advertising timed out"));
-      break;
-    default:
-      break;
-  }
-}
-
-/**************************************************************************/
-/*!
-    This function is called whenever data arrives on the RX channel
-*/
-/**************************************************************************/
-void rxCallback(uint8_t *buffer, uint8_t len)
-{
-  /* ToDo: Push this data into an RX buffer in firmata.cpp */
-  
-  Serial.print(F("RX: "));
-  for(int i=0; i<len; i++)
-  {
-    Serial.print((char)buffer[i]);
-  }
-  Serial.println(F(""));
-  
-  /* Echo the same data back! */  
-  uart.write(buffer, len);
-}
-
 /*==============================================================================
  * FUNCTIONS
  *============================================================================*/
@@ -160,11 +103,7 @@ void readAndReportData(byte address, int theRegister, byte numBytes) {
     Wire.send((byte)theRegister);
     #endif
     Wire.endTransmission();
-    // do not set a value of 0
-    if (i2cReadDelayTime > 0) {
-      // delay is necessary for some devices such as WiiNunchuck
-      delayMicroseconds(i2cReadDelayTime);
-    }
+    delayMicroseconds(i2cReadDelayTime);  // delay is necessary for some devices such as WiiNunchuck
   } else {
     theRegister = 0;  // fill the register with a dummy value
   }
@@ -185,14 +124,14 @@ void readAndReportData(byte address, int theRegister, byte numBytes) {
   }
   else {
     if(numBytes > Wire.available()) {
-      Firmata.sendString("I2C Read Error: Too many bytes received");
+      BLE_Firmata.sendString("I2C Read Error: Too many bytes received");
     } else {
-      Firmata.sendString("I2C Read Error: Too few bytes received"); 
+      BLE_Firmata.sendString("I2C Read Error: Too few bytes received"); 
     }
   }
 
   // send slave address, register and received bytes
-  Firmata.sendSysex(SYSEX_I2C_REPLY, numBytes + 2, i2cRxData);
+  BLE_Firmata.sendSysex(SYSEX_I2C_REPLY, numBytes + 2, i2cRxData);
 }
 
 void outputPort(byte portNumber, byte portValue, byte forceSend)
@@ -201,7 +140,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
   if(forceSend || previousPINs[portNumber] != portValue) {
-    Firmata.sendDigitalPort(portNumber, portValue);
+    BLE_Firmata.sendDigitalPort(portNumber, portValue);
     previousPINs[portNumber] = portValue;
   }
 }
@@ -304,7 +243,7 @@ void setPinModeCallback(byte pin, int mode)
     }
     break;
   default:
-    Firmata.sendString("Unknown pin mode"); // TODO: put error msgs in EEPROM
+    BLE_Firmata.sendString("Unknown pin mode"); // TODO: put error msgs in EEPROM
   }
   // TODO: save status to EEPROM here, if changed
 }
@@ -355,7 +294,7 @@ void digitalWriteCallback(byte port, int value)
 // -----------------------------------------------------------------------------
 /* sets bits in a bit array (int) to toggle the reporting of the analogIns
  */
-//void BLEFirmataClass::setAnalogPinReporting(byte pin, byte state) {
+//void FirmataClass::setAnalogPinReporting(byte pin, byte state) {
 //}
 void reportAnalogCallback(byte analogPin, int value)
 {
@@ -398,7 +337,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
   case I2C_REQUEST:
     mode = argv[1] & I2C_READ_WRITE_MODE_MASK;
     if (argv[1] & I2C_10BIT_ADDRESS_MODE_MASK) {
-      Firmata.sendString("10-bit addressing mode is not yet supported");
+      BLE_Firmata.sendString("10-bit addressing mode is not yet supported");
       return;
     }
     else {
@@ -435,7 +374,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
     case I2C_READ_CONTINUOUSLY:
       if ((queryIndex + 1) >= MAX_QUERIES) {
         // too many queries, just ignore
-        Firmata.sendString("too many queries");
+        BLE_Firmata.sendString("too many queries");
         break;
       }
       queryIndex++;
@@ -508,7 +447,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
         samplingInterval = MINIMUM_SAMPLING_INTERVAL;
       }      
     } else {
-      //Firmata.sendString("Not enough data");
+      //BLE_Firmata.sendString("Not enough data");
     }
     break;
   case EXTENDED_ANALOG:
@@ -520,57 +459,57 @@ void sysexCallback(byte command, byte argc, byte *argv)
     }
     break;
   case CAPABILITY_QUERY:
-    Firmata.write(START_SYSEX);
-    Firmata.write(CAPABILITY_RESPONSE);
+    Serial.write(START_SYSEX);
+    Serial.write(CAPABILITY_RESPONSE);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
       if (IS_PIN_DIGITAL(pin)) {
-        Firmata.write((byte)INPUT);
-        Firmata.write(1);
-        Firmata.write((byte)OUTPUT);
-        Firmata.write(1);
+        Serial.write((byte)INPUT);
+        Serial.write(1);
+        Serial.write((byte)OUTPUT);
+        Serial.write(1);
       }
       if (IS_PIN_ANALOG(pin)) {
-        Firmata.write(ANALOG);
-        Firmata.write(10);
+        Serial.write(ANALOG);
+        Serial.write(10);
       }
       if (IS_PIN_PWM(pin)) {
-        Firmata.write(PWM);
-        Firmata.write(8);
+        Serial.write(PWM);
+        Serial.write(8);
       }
       if (IS_PIN_SERVO(pin)) {
-        Firmata.write(SERVO);
-        Firmata.write(14);
+        Serial.write(SERVO);
+        Serial.write(14);
       }
       if (IS_PIN_I2C(pin)) {
-        Firmata.write(I2C);
-        Firmata.write(1);  // to do: determine appropriate value 
+        Serial.write(I2C);
+        Serial.write(1);  // to do: determine appropriate value 
       }
-      Firmata.write(127);
+      Serial.write(127);
     }
-    Firmata.write(END_SYSEX);
+    Serial.write(END_SYSEX);
     break;
   case PIN_STATE_QUERY:
     if (argc > 0) {
       byte pin=argv[0];
-      Firmata.write(START_SYSEX);
-      Firmata.write(PIN_STATE_RESPONSE);
-      Firmata.write(pin);
+      Serial.write(START_SYSEX);
+      Serial.write(PIN_STATE_RESPONSE);
+      Serial.write(pin);
       if (pin < TOTAL_PINS) {
-        Firmata.write((byte)pinConfig[pin]);
-	Firmata.write((byte)pinState[pin] & 0x7F);
-	if (pinState[pin] & 0xFF80) Firmata.write((byte)(pinState[pin] >> 7) & 0x7F);
-	if (pinState[pin] & 0xC000) Firmata.write((byte)(pinState[pin] >> 14) & 0x7F);
+        Serial.write((byte)pinConfig[pin]);
+	Serial.write((byte)pinState[pin] & 0x7F);
+	if (pinState[pin] & 0xFF80) Serial.write((byte)(pinState[pin] >> 7) & 0x7F);
+	if (pinState[pin] & 0xC000) Serial.write((byte)(pinState[pin] >> 14) & 0x7F);
       }
-      Firmata.write(END_SYSEX);
+      Serial.write(END_SYSEX);
     }
     break;
   case ANALOG_MAPPING_QUERY:
-    Firmata.write(START_SYSEX);
-    Firmata.write(ANALOG_MAPPING_RESPONSE);
+    Serial.write(START_SYSEX);
+    Serial.write(ANALOG_MAPPING_RESPONSE);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
-      Firmata.write(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
+      Serial.write(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
     }
-    Firmata.write(END_SYSEX);
+    Serial.write(END_SYSEX);
     break;
   }
 }
@@ -608,59 +547,94 @@ void disableI2CPins() {
 
 void systemResetCallback()
 {
-  /* ToDo: Implement this but the nRF8001 uses many of these pins! */
-  
-//  // initialize a defalt state
-//  // TODO: option to load config from EEPROM instead of default
-//  if (isI2CEnabled) {
-//  	disableI2CPins();
-//  }
-//  for (byte i=0; i < TOTAL_PORTS; i++) {
-//    reportPINs[i] = false;      // by default, reporting off
-//    portConfigInputs[i] = 0;	// until activated
-//    previousPINs[i] = 0;
-//  }
-//  // pins with analog capability default to analog input
-//  // otherwise, pins default to digital output
-//  for (byte i=0; i < TOTAL_PINS; i++) {
-//    if (IS_PIN_ANALOG(i)) {
-//      // turns off pullup, configures everything
-//      setPinModeCallback(i, ANALOG);
-//    } else {
-//      // sets the output to 0, configures portConfigInputs
-//      setPinModeCallback(i, OUTPUT);
-//    }
-//  }
-//  // by default, do not report any analog inputs
-//  analogInputsToReport = 0;
-//
-//  /* send digital inputs to set the initial state on the host computer,
-//   * since once in the loop(), this firmware will only send on change */
-//  /*
-//  TODO: this can never execute, since no pins default to digital input
-//        but it will be needed when/if we support EEPROM stored config
-//  for (byte i=0; i < TOTAL_PORTS; i++) {
-//    outputPort(i, readPort(i, portConfigInputs[i]), true);
-//  }
-//  */
+  // initialize a defalt state
+  // TODO: option to load config from EEPROM instead of default
+  if (isI2CEnabled) {
+  	disableI2CPins();
+  }
+  for (byte i=0; i < TOTAL_PORTS; i++) {
+    reportPINs[i] = false;      // by default, reporting off
+    portConfigInputs[i] = 0;	// until activated
+    previousPINs[i] = 0;
+  }
+  // pins with analog capability default to analog input
+  // otherwise, pins default to digital output
+  for (byte i=0; i < TOTAL_PINS; i++) {
+    if (IS_PIN_ANALOG(i)) {
+      // turns off pullup, configures everything
+      setPinModeCallback(i, ANALOG);
+    } else {
+      // sets the output to 0, configures portConfigInputs
+      setPinModeCallback(i, OUTPUT);
+    }
+  }
+  // by default, do not report any analog inputs
+  analogInputsToReport = 0;
+
+  /* send digital inputs to set the initial state on the host computer,
+   * since once in the loop(), this firmware will only send on change */
+  /*
+  TODO: this can never execute, since no pins default to digital input
+        but it will be needed when/if we support EEPROM stored config
+  for (byte i=0; i < TOTAL_PORTS; i++) {
+    outputPort(i, readPort(i, portConfigInputs[i]), true);
+  }
+  */
 }
+
+
+aci_evt_opcode_t laststatus, status;
 
 void setup() 
 {
-  Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+  Serial.begin(9600);
+  Serial.println("BTLE Firmata test");
+  
+  BLEserial.begin();
+  
+  status = laststatus = ACI_EVT_DISCONNECTED;
+  while (status != ACI_EVT_CONNECTED) {
+    BLEserial.pollACI();
+  
+    // Ask what is our current status
+    aci_evt_opcode_t status = BLEserial.getState();
+    // If the status changed....
+    if (status != laststatus) {
+      // print it out!
+      if (status == ACI_EVT_DEVICE_STARTED) {
+          Serial.println(F("* Advertising started"));
+      }
+      if (status == ACI_EVT_CONNECTED) {
+          Serial.println(F("* Connected!"));
+          break;
+      }
+      if (status == ACI_EVT_DISCONNECTED) {
+          Serial.println(F("* Disconnected or advertising timed out"));
+      }
+      // OK set the last status change to this one
+      laststatus = status;
+    }
+  }
+  
+  Serial.println(F("Init firmata"));
+  //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+  Serial.println(F("firmata analog"));
+  BLE_Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
+  Serial.println(F("firmata digital"));
+  BLE_Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
+  Serial.println(F("firmata analog report"));
+  BLE_Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
+  Serial.println(F("firmata digital report"));
+  BLE_Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
+  Serial.println(F("firmata pinmode"));
+  BLE_Firmata.attach(SET_PIN_MODE, setPinModeCallback);
+  Serial.println(F("firmata sysex"));
+  BLE_Firmata.attach(START_SYSEX, sysexCallback);
+  Serial.println(F("firmata reset"));
+  BLE_Firmata.attach(SYSTEM_RESET, systemResetCallback);
 
-  Firmata.attach(ANALOG_MESSAGE,  analogWriteCallback);
-  Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
-  Firmata.attach(REPORT_ANALOG,   reportAnalogCallback);
-  Firmata.attach(REPORT_DIGITAL,  reportDigitalCallback);
-  Firmata.attach(SET_PIN_MODE,    setPinModeCallback);
-  Firmata.attach(START_SYSEX,     sysexCallback);
-  Firmata.attach(SYSTEM_RESET,    systemResetCallback);
-
-  Serial.begin(115200);
-  Serial.println(F("Arduino setup"));
-
-  Firmata.begin(uart);
+  Serial.println("Begin firmata");
+  BLE_Firmata.begin();
   systemResetCallback();  // reset to default config
 }
 
@@ -669,44 +643,45 @@ void setup()
  *============================================================================*/
 void loop() 
 {
-  // Handle any buffered ACI events from BLE
-  // ---------------------------------------
-  uart.pollACI();
+  BLEserial.pollACI();
+  if (BLEserial.getState() != ACI_EVT_CONNECTED) {
+      Serial.print("!");
+      return;
+  }
 
-//  // Process Firmata Messages, etc.
-//  // ------------------------------
-//  byte pin, analogPin;
-//
-//  /* DIGITALREAD - as fast as possible, check for changes and output them to the
-//   * FTDI buffer using Serial.print()  */
-//  checkDigitalInputs();
-//
-//  /* SERIALREAD - processing incoming messagse as soon as possible, while still
-//   * checking digital inputs.  */
-//  while(Firmata.available())
-//    Firmata.processInput();
-//
-//  /* SEND FTDI WRITE BUFFER - make sure that the FTDI buffer doesn't go over
-//   * 60 bytes. use a timer to sending an event character every 4 ms to
-//   * trigger the buffer to dump. */
-//
-//  currentMillis = millis();
-//  if (currentMillis - previousMillis > samplingInterval) {
-//    previousMillis += samplingInterval;
-//    /* ANALOGREAD - do all analogReads() at the configured sampling interval */
-//    for(pin=0; pin<TOTAL_PINS; pin++) {
-//      if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
-//        analogPin = PIN_TO_ANALOG(pin);
-//        if (analogInputsToReport & (1 << analogPin)) {
-//          Firmata.sendAnalog(analogPin, analogRead(analogPin));
-//        }
-//      }
-//    }
-//    // report i2c data for all device with read continuous mode enabled
-//    if (queryIndex > -1) {
-//      for (byte i = 0; i < queryIndex + 1; i++) {
-//        readAndReportData(query[i].addr, query[i].reg, query[i].bytes);
-//      }
-//    }
-//  }
+  byte pin, analogPin;
+
+  /* DIGITALREAD - as fast as possible, check for changes and output them to the
+   * FTDI buffer using Serial.print()  */
+  checkDigitalInputs();  
+
+  /* SERIALREAD - processing incoming messagse as soon as possible, while still
+   * checking digital inputs.  */
+  while(BLE_Firmata.available()) {
+    //Serial.println(F("*data available*"));
+    BLE_Firmata.processInput();
+  }
+  /* SEND FTDI WRITE BUFFER - make sure that the FTDI buffer doesn't go over
+   * 60 bytes. use a timer to sending an event character every 4 ms to
+   * trigger the buffer to dump. */
+
+  currentMillis = millis();
+  if (currentMillis - previousMillis > samplingInterval) {
+    previousMillis += samplingInterval;
+    /* ANALOGREAD - do all analogReads() at the configured sampling interval */
+    for(pin=0; pin<TOTAL_PINS; pin++) {
+      if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
+        analogPin = PIN_TO_ANALOG(pin);
+        if (analogInputsToReport & (1 << analogPin)) {
+          BLE_Firmata.sendAnalog(analogPin, analogRead(analogPin));
+        }
+      }
+    }
+    // report i2c data for all device with read continuous mode enabled
+    if (queryIndex > -1) {
+      for (byte i = 0; i < queryIndex + 1; i++) {
+        readAndReportData(query[i].addr, query[i].reg, query[i].bytes);
+      }
+    }
+  }
 }
