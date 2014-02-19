@@ -284,11 +284,15 @@ void digitalWriteCallback(byte port, int value)
         if (pinConfig[pin] == OUTPUT || pinConfig[pin] == INPUT) {
           pinWriteMask |= mask;
           pinState[pin] = ((byte)value & mask) ? 1 : 0;
+          
+          if (AUTO_INPUT_PULLUPS && ( pinConfig[pin] == INPUT)) {
+            value |= mask;
+          }
         }
       }
       mask = mask << 1;
     }
-    Serial.println(F("Write digital"));
+    Serial.print(F("Write digital port #")); Serial.print(port); Serial.print(" = 0x"); Serial.println(value, HEX);
     writePort(port, (byte)value, pinWriteMask);
   }
 }

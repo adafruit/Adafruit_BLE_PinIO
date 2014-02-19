@@ -138,7 +138,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #define TOTAL_PINS              22 // 14 digital + 8 analog
 #endif
 
-#define VERSION_BLINK_PIN       3
+#define VERSION_BLINK_PIN       99
 // we dont use digital 2 or 9, 10, 11, 12, 13 -> BTLE link
 #define IS_PIN_DIGITAL(p)       (((p) >= 3 && (p) <= 8) || ((p) >= 14  && (p) <= 19 ))
 #define IS_PIN_ANALOG(p)        ((p) >= 14 && (p) < 14 + TOTAL_ANALOG_PINS)
