@@ -292,7 +292,9 @@ void digitalWriteCallback(byte port, int value)
       }
       mask = mask << 1;
     }
-    Serial.print(F("Write digital port #")); Serial.print(port); Serial.print(" = 0x"); Serial.println(value, HEX);
+    Serial.print(F("Write digital port #")); Serial.print(port); 
+    Serial.print(" = 0x"); Serial.print(value, HEX);
+    Serial.print(" mask = 0x"); Serial.println(pinWriteMask, HEX);
     writePort(port, (byte)value, pinWriteMask);
   }
 }
