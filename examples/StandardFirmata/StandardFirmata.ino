@@ -35,6 +35,9 @@
 #include <BLE_Firmata.h>
 #include "Adafruit_BLE_UART.h"
 
+
+#define AUTO_INPUT_PULLUPS true
+
 // Connect CLK/MISO/MOSI to hardware SPI
 // e.g. On UNO & compatible: CLK = 13, MISO = 12, MOSI = 11
 #define ADAFRUITBLE_REQ 10
@@ -140,7 +143,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
   if(forceSend || previousPINs[portNumber] != portValue) {
-    Serial.println(F("Sending update"));
+    Serial.print(F("Sending update for port ")); Serial.print(portNumber); Serial.print(" = 0x"); Serial.println(portValue, HEX);
     BLE_Firmata.sendDigitalPort(portNumber, portValue);
     previousPINs[portNumber] = portValue;
   }
@@ -201,16 +204,15 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case INPUT:
     if (IS_PIN_DIGITAL(pin)) {
-      Serial.println("input");
+      Serial.print("Set pin #"); Serial.print(pin); Serial.println(" to input");
       pinMode(PIN_TO_DIGITAL(pin), INPUT); // disable output driver
-      digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
+      if (AUTO_INPUT_PULLUPS) {
+        digitalWrite(PIN_TO_DIGITAL(pin), HIGH); // enable internal pull-ups
+      } else {
+        digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
+      }
       pinConfig[pin] = INPUT;
       
-      // MEME update so we have an update report
-      uint8_t tempport = pin/8;
-      uint8_t temppin = reportPINs[tempport];
-      reportDigitalCallback(tempport, temppin | (1<<(pin % 8)));
-      //
     }
     break;
   case OUTPUT:
@@ -312,7 +314,7 @@ void reportAnalogCallback(byte analogPin, int value)
 void reportDigitalCallback(byte port, int value)
 {
   if (port < TOTAL_PORTS) {
-    Serial.print("Report 0x"); Serial.print(value, HEX); Serial.print(" digital on "); Serial.println(port);
+    Serial.print("Will report 0x"); Serial.print(value, HEX); Serial.print(" digital mask on port "); Serial.println(port);
     reportPINs[port] = (byte)value;
   }
   // do not disable analog reporting on these 8 pins, to allow some
@@ -657,12 +659,6 @@ void loop()
   if (Serial.available()) {
     BLEserial.write(Serial.read());
 
-  }
-  pinMode(4, INPUT);
-  if (! digitalRead(4)) {
-     uint8_t foo[3] = {'a', 'b', 'c'};
-     BLEserial.write(foo, 3); 
-    delay(500);  
   }
   byte pin, analogPin;
 
