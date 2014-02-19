@@ -132,7 +132,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
 #if defined(NUM_ANALOG_INPUTS) && NUM_ANALOG_INPUTS == 6
 #define TOTAL_ANALOG_PINS       6
-#define TOTAL_PINS              12 // 6 digital + 6 analog
+#define TOTAL_PINS              16 // 14 digital (not all are 'digital/available') + 6 analog
 #else
 #define TOTAL_ANALOG_PINS       8
 #define TOTAL_PINS              22 // 14 digital + 8 analog
@@ -149,7 +149,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #define PIN_TO_ANALOG(p)        ((p) - 14)
 #define PIN_TO_PWM(p)           PIN_TO_DIGITAL(p)
 #define PIN_TO_SERVO(p)         ((p) - 2)
-#define ARDUINO_PINOUT_OPTIMIZE 1
+#define ARDUINO_PINOUT_OPTIMIZE 0
 
 
 // Arduino Mega
@@ -228,14 +228,13 @@ static inline unsigned char writePort(byte port, byte value, byte bitmask)
 	}
 #else
 	byte pin=port*8;
-	if ((bitmask & 0x01)) digitalWrite(PIN_TO_DIGITAL(pin+0), (value & 0x01));
-	if ((bitmask & 0x02)) digitalWrite(PIN_TO_DIGITAL(pin+1), (value & 0x02));
-	if ((bitmask & 0x04)) digitalWrite(PIN_TO_DIGITAL(pin+2), (value & 0x04));
-	if ((bitmask & 0x08)) digitalWrite(PIN_TO_DIGITAL(pin+3), (value & 0x08));
-	if ((bitmask & 0x10)) digitalWrite(PIN_TO_DIGITAL(pin+4), (value & 0x10));
-	if ((bitmask & 0x20)) digitalWrite(PIN_TO_DIGITAL(pin+5), (value & 0x20));
-	if ((bitmask & 0x40)) digitalWrite(PIN_TO_DIGITAL(pin+6), (value & 0x40));
-	if ((bitmask & 0x80)) digitalWrite(PIN_TO_DIGITAL(pin+7), (value & 0x80));
+	for (uint8_t i=0; i<8; i++) {
+	  if (bitmask & (1 << i)) {
+	    // dont touch non-digital pins
+	    if (IS_PIN_DIGITAL(pin+i))
+	      digitalWrite(PIN_TO_DIGITAL(pin+i), (value & (1 << i)));
+	  }
+	}
 #endif
 }
 
