@@ -173,7 +173,7 @@ void BLE_FirmataClass::processInput(void)
     
   if (inputData == -1) return;
 
-  Serial.print("0x"); Serial.print(inputData, HEX); Serial.println(" ");
+  Serial.print("0x"); Serial.print(inputData, HEX); Serial.print(" ");
 
   if (parsingSysex) {
     if(inputData == END_SYSEX) {
@@ -190,6 +190,9 @@ void BLE_FirmataClass::processInput(void)
     waitForData--;
     storedInputData[waitForData] = inputData;
     if( (waitForData==0) && executeMultiByteCommand ) { // got the whole message
+
+      Serial.println();
+
       switch(executeMultiByteCommand) {
       case ANALOG_MESSAGE:
         if(currentAnalogCallback) {
