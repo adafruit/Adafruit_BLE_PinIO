@@ -173,8 +173,6 @@ void BLE_FirmataClass::processInput(void)
     
   if (inputData == -1) return;
 
-  Serial.print("0x"); Serial.print(inputData, HEX); Serial.print(" ");
-
   if (parsingSysex) {
     if(inputData == END_SYSEX) {
       //stop sysex byte      
@@ -189,9 +187,16 @@ void BLE_FirmataClass::processInput(void)
   } else if( (waitForData > 0) && (inputData < 128) ) {  
     waitForData--;
     storedInputData[waitForData] = inputData;
+#ifdef BLE_DEBUG
+        Serial.print(F(" 0x")); Serial.print(inputData, HEX); 
+#endif
+
     if( (waitForData==0) && executeMultiByteCommand ) { // got the whole message
 
-      Serial.println();
+#ifdef BLE_DEBUG
+      Serial.println(); 
+#endif
+
 
       switch(executeMultiByteCommand) {
       case ANALOG_MESSAGE:
@@ -224,6 +229,9 @@ void BLE_FirmataClass::processInput(void)
       executeMultiByteCommand = 0;
     }	
   } else {
+#ifdef BLE_DEBUG
+    Serial.print(F("\tReceived 0x")); Serial.print(inputData, HEX); 
+#endif
     // remove channel info from command byte if less than 0xF0
     if(inputData < 0xF0) {
       command = inputData & 0xF0;
@@ -267,6 +275,7 @@ void BLE_FirmataClass::sendAnalog(byte pin, int value)
   // create a three byte buffer
   uint8_t sendbuffer[3];
 
+  Serial.print("A"); Serial.print(pin); Serial.print(" = "); Serial.println(value);
   // pin can only be 0-15, so chop higher bits
   //FirmataSerial.write(ANALOG_MESSAGE | (pin & 0xF));
   sendbuffer[0] = ANALOG_MESSAGE | (pin & 0xF);

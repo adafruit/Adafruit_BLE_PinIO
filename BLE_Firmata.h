@@ -16,6 +16,8 @@
 #include "Adafruit_BLE_UART.h"
 #include "Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
 
+#define BLE_DEBUG
+
 // move the following defines to Firmata.h?
 #define I2C_WRITE B00000000
 #define I2C_READ B00001000
