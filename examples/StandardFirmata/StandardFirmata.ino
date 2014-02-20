@@ -59,6 +59,7 @@ BLE_FirmataClass BLE_Firmata(BLEserial);
 
 /* analog inputs */
 int analogInputsToReport = 0; // bitwise array to store pin reporting
+int lastAnalogReads[NUM_ANALOG_INPUTS];
 
 /* digital input ports */
 byte reportPINs[TOTAL_PORTS];       // 1 = report this port, 0 = silence
@@ -190,8 +191,8 @@ void setPinModeCallback(byte pin, int mode)
     } else {
       portConfigInputs[pin/8] &= ~(1 << (pin & 7));
     }
-    Serial.print(F("Setting pin #")); Serial.print(pin); Serial.print(F(" port config mask to = 0x")); 
-    Serial.println(portConfigInputs[pin/8], HEX);
+   // Serial.print(F("Setting pin #")); Serial.print(pin); Serial.print(F(" port config mask to = 0x")); 
+   // Serial.println(portConfigInputs[pin/8], HEX);
   }
   pinState[pin] = 0;
   switch(mode) {
@@ -203,6 +204,7 @@ void setPinModeCallback(byte pin, int mode)
         digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
       }
       pinConfig[pin] = ANALOG;
+      lastAnalogReads[pin] = -1;
     }
     break;
   case INPUT:
@@ -706,7 +708,11 @@ void loop()
       if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
         analogPin = PIN_TO_ANALOG(pin);
         if (analogInputsToReport & (1 << analogPin)) {
-          BLE_Firmata.sendAnalog(analogPin, analogRead(analogPin));
+          int currentRead = analogRead(analogPin);
+          if ((lastAnalogReads[analogPin] == -1) || (lastAnalogReads[analogPin] != currentRead)) {
+            BLE_Firmata.sendAnalog(analogPin, currentRead);
+            lastAnalogReads[analogPin] = currentRead;
+          }
         }
       }
     }
