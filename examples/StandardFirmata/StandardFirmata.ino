@@ -72,7 +72,7 @@ int pinState[TOTAL_PINS];           // any value that has been written
 /* timer variables */
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
-int samplingInterval = 19;          // how often to run the main loop (in ms)
+int samplingInterval = 50;          // how often to run the main loop (in ms)
 
 /* i2c data */
 struct i2c_device_info {
@@ -159,9 +159,9 @@ void checkDigitalInputs(void)
    * to readPort() are compile-time constants. */
   for (uint8_t i=0; i<TOTAL_PORTS; i++) {
     if (reportPINs[i]) {
-    //  Serial.print("Reporting on port"); Serial.println(i);
+     // Serial.print("Reporting on port "); Serial.print(i); Serial.print(" mask 0x"); Serial.println(portConfigInputs[i], HEX);
       uint8_t x = readPort(i, portConfigInputs[i]);
-    //  Serial.print("Read 0x"); Serial.println(x, HEX);
+     // Serial.print("Read 0x"); Serial.println(x, HEX);
       outputPort(i, x, false);
     }
   }
@@ -190,11 +190,14 @@ void setPinModeCallback(byte pin, int mode)
     } else {
       portConfigInputs[pin/8] &= ~(1 << (pin & 7));
     }
+    Serial.print(F("Setting pin #")); Serial.print(pin); Serial.print(F(" port config mask to = 0x")); 
+    Serial.println(portConfigInputs[pin/8], HEX);
   }
   pinState[pin] = 0;
   switch(mode) {
   case ANALOG:
     if (IS_PIN_ANALOG(pin)) {
+      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to analog"));
       if (IS_PIN_DIGITAL(pin)) {
         pinMode(PIN_TO_DIGITAL(pin), INPUT); // disable output driver
         digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
@@ -204,7 +207,7 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case INPUT:
     if (IS_PIN_DIGITAL(pin)) {
-      Serial.print("Set pin #"); Serial.print(pin); Serial.println(" to input");
+      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to input"));
       pinMode(PIN_TO_DIGITAL(pin), INPUT); // disable output driver
       if (AUTO_INPUT_PULLUPS) {
         digitalWrite(PIN_TO_DIGITAL(pin), HIGH); // enable internal pull-ups
@@ -217,6 +220,7 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case OUTPUT:
     if (IS_PIN_DIGITAL(pin)) {
+      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to output"));
       digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable PWM
       pinMode(PIN_TO_DIGITAL(pin), OUTPUT);
       pinConfig[pin] = OUTPUT;
@@ -293,8 +297,8 @@ void digitalWriteCallback(byte port, int value)
       mask = mask << 1;
     }
     Serial.print(F("Write digital port #")); Serial.print(port); 
-    Serial.print(" = 0x"); Serial.print(value, HEX);
-    Serial.print(" mask = 0x"); Serial.println(pinWriteMask, HEX);
+    Serial.print(F(" = 0x")); Serial.print(value, HEX);
+    Serial.print(F(" mask = 0x")); Serial.println(pinWriteMask, HEX);
     writePort(port, (byte)value, pinWriteMask);
   }
 }
@@ -310,8 +314,10 @@ void reportAnalogCallback(byte analogPin, int value)
   if (analogPin < TOTAL_ANALOG_PINS) {
     if(value == 0) {
       analogInputsToReport = analogInputsToReport &~ (1 << analogPin);
+      Serial.print(F("Stop reporting analog pin #")); Serial.println(analogPin);
     } else {
       analogInputsToReport = analogInputsToReport | (1 << analogPin);
+      Serial.print(F("Will report analog pin #")); Serial.println(analogPin);
     }
   }
   // TODO: save status to EEPROM here, if changed
@@ -320,7 +326,7 @@ void reportAnalogCallback(byte analogPin, int value)
 void reportDigitalCallback(byte port, int value)
 {
   if (port < TOTAL_PORTS) {
-    Serial.print("Will report 0x"); Serial.print(value, HEX); Serial.print(" digital mask on port "); Serial.println(port);
+    Serial.print(F("Will report 0x")); Serial.print(value, HEX); Serial.print(F(" digital mask on port ")); Serial.println(port);
     reportPINs[port] = (byte)value;
   }
   // do not disable analog reporting on these 8 pins, to allow some
@@ -347,7 +353,8 @@ void sysexCallback(byte command, byte argc, byte *argv)
   case I2C_REQUEST:
     mode = argv[1] & I2C_READ_WRITE_MODE_MASK;
     if (argv[1] & I2C_10BIT_ADDRESS_MODE_MASK) {
-      BLE_Firmata.sendString("10-bit addressing mode is not yet supported");
+      //BLE_Firmata.sendString("10-bit addressing mode is not yet supported");
+      Serial.println(F("10-bit addressing mode is not yet supported"));
       return;
     }
     else {
@@ -558,6 +565,7 @@ void disableI2CPins() {
 void systemResetCallback()
 {
   // initialize a defalt state
+  Serial.println(F("***RESET***"));
   // TODO: option to load config from EEPROM instead of default
   if (isI2CEnabled) {
   	disableI2CPins();
@@ -575,7 +583,7 @@ void systemResetCallback()
       setPinModeCallback(i, ANALOG);
     } else {
       // sets the output to 0, configures portConfigInputs
-      setPinModeCallback(i, OUTPUT);
+      setPinModeCallback(i, INPUT);
     }
   }
   // by default, do not report any analog inputs
@@ -628,19 +636,19 @@ void setup()
   
   Serial.println(F("Init firmata"));
   //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
-  Serial.println(F("firmata analog"));
+  //Serial.println(F("firmata analog"));
   BLE_Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-  Serial.println(F("firmata digital"));
+  //Serial.println(F("firmata digital"));
   BLE_Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
-  Serial.println(F("firmata analog report"));
+  //Serial.println(F("firmata analog report"));
   BLE_Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
-  Serial.println(F("firmata digital report"));
+  //Serial.println(F("firmata digital report"));
   BLE_Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-  Serial.println(F("firmata pinmode"));
+  //Serial.println(F("firmata pinmode"));
   BLE_Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-  Serial.println(F("firmata sysex"));
+  //Serial.println(F("firmata sysex"));
   BLE_Firmata.attach(START_SYSEX, sysexCallback);
-  Serial.println(F("firmata reset"));
+  //Serial.println(F("firmata reset"));
   BLE_Firmata.attach(SYSTEM_RESET, systemResetCallback);
 
   Serial.println("Begin firmata");
@@ -668,6 +676,14 @@ void loop()
   }
   byte pin, analogPin;
 
+
+// **DEBUG ***
+/*
+  for (uint8_t p=0; p<3; p++) {
+    Serial.print(F("\tport[")); Serial.print(p); Serial.print("] = 0x"); Serial.println(portConfigInputs[p], HEX);
+  }
+*/
+  
   /* DIGITALREAD - as fast as possible, check for changes and output them to the
    * FTDI buffer using Serial.print()  */
   checkDigitalInputs();  

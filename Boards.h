@@ -132,7 +132,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
 #if defined(NUM_ANALOG_INPUTS) && NUM_ANALOG_INPUTS == 6
 #define TOTAL_ANALOG_PINS       6
-#define TOTAL_PINS              16 // 14 digital (not all are 'digital/available') + 6 analog
+#define TOTAL_PINS              22 // 14 digital (not all are 'digital/available') + 6 analog
 #else
 #define TOTAL_ANALOG_PINS       8
 #define TOTAL_PINS              22 // 14 digital + 8 analog

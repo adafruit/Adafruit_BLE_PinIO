@@ -264,9 +264,18 @@ void BLE_FirmataClass::processInput(void)
 // send an analog message
 void BLE_FirmataClass::sendAnalog(byte pin, int value) 
 {
+  // create a three byte buffer
+  uint8_t sendbuffer[3];
+
   // pin can only be 0-15, so chop higher bits
-  FirmataSerial.write(ANALOG_MESSAGE | (pin & 0xF));
-  sendValueAsTwo7bitBytes(value);
+  //FirmataSerial.write(ANALOG_MESSAGE | (pin & 0xF));
+  sendbuffer[0] = ANALOG_MESSAGE | (pin & 0xF);
+
+  //sendValueAsTwo7bitBytes(value);  
+  sendbuffer[1] = value % 128; // Tx bits 0-6
+  sendbuffer[2] = (value >> 7) &0x7F;  // Tx bits 7-13
+
+  FirmataSerial.write(sendbuffer, 3);
 }
 
 // send a single digital pin in a digital message
