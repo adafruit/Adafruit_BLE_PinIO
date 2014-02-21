@@ -73,7 +73,10 @@ int pinState[TOTAL_PINS];           // any value that has been written
 /* timer variables */
 unsigned long currentMillis;        // store the current value from millis()
 unsigned long previousMillis;       // for comparison with currentMillis
-int samplingInterval = 50;          // how often to run the main loop (in ms)
+int samplingInterval = 200;          // how often to run the main loop (in ms)
+#define MINIMUM_SAMPLE_DELAY 150
+#define ANALOG_SAMPLE_DELAY 50
+
 
 /* i2c data */
 struct i2c_device_info {
@@ -153,7 +156,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
 /* -----------------------------------------------------------------------------
  * check all the active digital inputs for change of state, then add any events
  * to the Serial output queue using Serial.print() */
-void checkDigitalInputs(void)
+void checkDigitalInputs(boolean forceSend = false)
 {
   /* Using non-looping code allows constants to be given to readPort().
    * The compiler will apply substantial optimizations if the inputs
@@ -163,7 +166,7 @@ void checkDigitalInputs(void)
      // Serial.print("Reporting on port "); Serial.print(i); Serial.print(" mask 0x"); Serial.println(portConfigInputs[i], HEX);
       uint8_t x = readPort(i, portConfigInputs[i]);
      // Serial.print("Read 0x"); Serial.println(x, HEX);
-      outputPort(i, x, false);
+      outputPort(i, x, forceSend);
     }
   }
 }
@@ -174,7 +177,7 @@ void checkDigitalInputs(void)
  */
 void setPinModeCallback(byte pin, int mode)
 {
-  if (pinConfig[pin] == I2C && isI2CEnabled && mode != I2C) {
+  if ((pinConfig[pin] == I2C) && (isI2CEnabled) && (mode != I2C)) {
     // disable i2c so pins can be used for other functions
     // the following if statements should reconfigure the pins properly
     disableI2CPins();
@@ -204,7 +207,7 @@ void setPinModeCallback(byte pin, int mode)
         digitalWrite(PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
       }
       pinConfig[pin] = ANALOG;
-      lastAnalogReads[pin] = -1;
+      lastAnalogReads[PIN_TO_ANALOG(pin)] = -1;
     }
     break;
   case INPUT:
@@ -218,6 +221,9 @@ void setPinModeCallback(byte pin, int mode)
       }
       pinConfig[pin] = INPUT;
       
+      // force sending state immediately
+      //delay(10);
+      //checkDigitalInputs(true);  
     }
     break;
   case OUTPUT:
@@ -318,7 +324,7 @@ void reportAnalogCallback(byte analogPin, int value)
       analogInputsToReport = analogInputsToReport &~ (1 << analogPin);
       Serial.print(F("Stop reporting analog pin #")); Serial.println(analogPin);
     } else {
-      analogInputsToReport = analogInputsToReport | (1 << analogPin);
+      analogInputsToReport |= (1 << analogPin);
       Serial.print(F("Will report analog pin #")); Serial.println(analogPin);
     }
   }
@@ -603,39 +609,19 @@ void systemResetCallback()
 }
 
 
-aci_evt_opcode_t laststatus, status;
+aci_evt_opcode_t lastBTLEstatus, BTLEstatus;
 
 void setup() 
 {
   Serial.begin(9600);
-  Serial.println("BTLE Firmata test");
+  Serial.println(F("Adafruit BTLE Firmata test"));
   
   BLEserial.begin();
   
-  status = laststatus = ACI_EVT_DISCONNECTED;
-  while (status != ACI_EVT_CONNECTED) {
-    BLEserial.pollACI();
-  
-    // Ask what is our current status
-    aci_evt_opcode_t status = BLEserial.getState();
-    // If the status changed....
-    if (status != laststatus) {
-      // print it out!
-      if (status == ACI_EVT_DEVICE_STARTED) {
-          Serial.println(F("* Advertising started"));
-      }
-      if (status == ACI_EVT_CONNECTED) {
-          Serial.println(F("* Connected!"));
-          break;
-      }
-      if (status == ACI_EVT_DISCONNECTED) {
-          Serial.println(F("* Disconnected or advertising timed out"));
-      }
-      // OK set the last status change to this one
-      laststatus = status;
-    }
-  }
-  
+  BTLEstatus = lastBTLEstatus = ACI_EVT_DISCONNECTED;
+}
+
+void firmataInit() {
   Serial.println(F("Init firmata"));
   //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
   //Serial.println(F("firmata analog"));
@@ -653,41 +639,56 @@ void setup()
   //Serial.println(F("firmata reset"));
   BLE_Firmata.attach(SYSTEM_RESET, systemResetCallback);
 
-  Serial.println("Begin firmata");
+  Serial.println(F("Begin firmata"));
   BLE_Firmata.begin();
-  systemResetCallback();  // reset to default config
-  
-
+  systemResetCallback();  // reset to default config 
 }
-
 /*==============================================================================
  * LOOP()
  *============================================================================*/
+
 void loop() 
 {
+  // Check the BTLE link, how're we doing?
   BLEserial.pollACI();
-  if (BLEserial.getState() != ACI_EVT_CONNECTED) {
-      Serial.print("!");
-      delay(100);
-      return;
-  }
+  // Link status check
+  BTLEstatus = BLEserial.getState();
 
+  // Check if something has changed
+  if (BTLEstatus != lastBTLEstatus) {
+    // print it out!
+    if (BTLEstatus == ACI_EVT_DEVICE_STARTED) {
+        Serial.println(F("* Advertising started"));
+    }
+    if (BTLEstatus == ACI_EVT_CONNECTED) {
+        Serial.println(F("* Connected!"));
+        // initialize Firmata cleanly
+         firmataInit();
+    }
+    if (BTLEstatus == ACI_EVT_DISCONNECTED) {
+        Serial.println(F("* Disconnected or advertising timed out"));
+    }
+    // OK set the last status change to this one
+    lastBTLEstatus = BTLEstatus;
+  }
+    
+  // if not connected... bail
+  if (BTLEstatus != ACI_EVT_CONNECTED) {
+    delay(100);
+    return;
+  }
+  
+  // For debugging, see if there's data on the serial console, we would forwad it to BTLE
   if (Serial.available()) {
     BLEserial.write(Serial.read());
-
   }
+  
+  // Onto the Firmata main loop
+  
   byte pin, analogPin;
-
-
-// **DEBUG ***
-/*
-  for (uint8_t p=0; p<3; p++) {
-    Serial.print(F("\tport[")); Serial.print(p); Serial.print("] = 0x"); Serial.println(portConfigInputs[p], HEX);
-  }
-*/
   
   /* DIGITALREAD - as fast as possible, check for changes and output them to the
-   * FTDI buffer using Serial.print()  */
+   * BTLE buffer using Serial.print()  */
   checkDigitalInputs();  
 
   /* SERIALREAD - processing incoming messagse as soon as possible, while still
@@ -700,16 +701,29 @@ void loop()
    * 60 bytes. use a timer to sending an event character every 4 ms to
    * trigger the buffer to dump. */
 
+  // make the sampling interval longer if we have more analog inputs!
+  uint8_t analogreportnums = 0;
+  for(uint8_t a=0; a<8; a++) {
+    if (analogInputsToReport & (1 << a)) {
+      analogreportnums++;
+    }
+  }
+
+  samplingInterval = (uint16_t)MINIMUM_SAMPLE_DELAY  + (uint16_t)ANALOG_SAMPLE_DELAY * (1+analogreportnums); 
+  
   currentMillis = millis();
   if (currentMillis - previousMillis > samplingInterval) {
     previousMillis += samplingInterval;
     /* ANALOGREAD - do all analogReads() at the configured sampling interval */
     for(pin=0; pin<TOTAL_PINS; pin++) {
-      if (IS_PIN_ANALOG(pin) && pinConfig[pin] == ANALOG) {
+      if (IS_PIN_ANALOG(pin) && (pinConfig[pin] == ANALOG)) {
         analogPin = PIN_TO_ANALOG(pin);
+
         if (analogInputsToReport & (1 << analogPin)) {
           int currentRead = analogRead(analogPin);
+          
           if ((lastAnalogReads[analogPin] == -1) || (lastAnalogReads[analogPin] != currentRead)) {
+            Serial.print(F("Analog")); Serial.print(analogPin); Serial.print(F(" = ")); Serial.println(currentRead);
             BLE_Firmata.sendAnalog(analogPin, currentRead);
             lastAnalogReads[analogPin] = currentRead;
           }
