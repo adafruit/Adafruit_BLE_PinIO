@@ -275,7 +275,6 @@ void BLE_FirmataClass::sendAnalog(byte pin, int value)
   // create a three byte buffer
   uint8_t sendbuffer[3];
 
-  Serial.print("A"); Serial.print(pin); Serial.print(" = "); Serial.println(value);
   // pin can only be 0-15, so chop higher bits
   //FirmataSerial.write(ANALOG_MESSAGE | (pin & 0xF));
   sendbuffer[0] = ANALOG_MESSAGE | (pin & 0xF);
