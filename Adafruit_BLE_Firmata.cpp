@@ -1,6 +1,9 @@
 /*
   Firmata.cpp - Firmata library
   Copyright (C) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
+
+  Modified for Adafruit_BLE_Uart by Limor Fried/Kevin Townsend for
+  Adafruit Industries, 2014
  
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -14,7 +17,7 @@
 //* Includes
 //******************************************************************************
 
-#include "BLE_Firmata.h"
+#include "Adafruit_BLE_Firmata.h"
 
 extern "C" {
 #include <string.h>
@@ -166,12 +169,12 @@ void BLE_FirmataClass::processSysexMessage(void)
   }
 }
 
-void BLE_FirmataClass::processInput(void)
+int BLE_FirmataClass::processInput(void)
 {
   int inputData = FirmataSerial.read(); // this is 'int' to handle -1 when no data
   int command;
     
-  if (inputData == -1) return;
+  if (inputData == -1) return -1;
 
   if (parsingSysex) {
     if(inputData == END_SYSEX) {
@@ -264,6 +267,8 @@ void BLE_FirmataClass::processInput(void)
       break;
     }
   }
+
+  return inputData;
 }
 
 //------------------------------------------------------------------------------

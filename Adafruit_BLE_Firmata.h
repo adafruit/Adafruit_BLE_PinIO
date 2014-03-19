@@ -1,6 +1,9 @@
 /*
   Firmata.h - Firmata library
   Copyright (C) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
+
+  Modified for Adafruit_BLE_Uart by Limor Fried/Kevin Townsend for
+  Adafruit Industries, 2014
  
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
@@ -10,8 +13,9 @@
   See file LICENSE.txt for further informations on licensing terms.
 */
 
-#ifndef BLE_Firmata_h
-#define BLE_Firmata_h
+
+#ifndef Adafruit_BLE_Firmata_h
+#define Adafruit_BLE_Firmata_h
 
 #include "Adafruit_BLE_UART.h"
 #include "Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
@@ -100,7 +104,7 @@ extern "C" {
 
 
 // TODO make it a subclass of a generic Serial/Stream base class
-class BLE_FirmataClass
+class Adafruit_BLE_FirmataClass
 {
 public:
   BLE_FirmataClass(Adafruit_BLE_UART &s);
@@ -115,7 +119,7 @@ public:
     void setFirmwareNameAndVersion(const char *name, byte major, byte minor);
 /* serial receive handling */
     int available(void);
-    void processInput(void);
+    int processInput(void);
 /* serial send handling */
 	void sendAnalog(byte pin, int value);
 	void sendDigital(byte pin, int value); // TODO implement this
