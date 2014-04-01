@@ -32,7 +32,7 @@
 #include <Servo.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <BLE_Firmata.h>
+#include <Adafruit_BLE_Firmata.h>
 #include "Adafruit_BLE_UART.h"
 
 
