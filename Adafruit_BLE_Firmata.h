@@ -104,7 +104,7 @@ extern "C" {
 
 
 // TODO make it a subclass of a generic Serial/Stream base class
-class BLE_FirmataClass
+class Adafruit_BLE_FirmataClass
 {
 public:
     Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s);
