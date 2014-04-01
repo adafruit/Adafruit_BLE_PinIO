@@ -28,18 +28,18 @@ extern "C" {
 //* Support Functions
 //******************************************************************************
 
-void BLE_FirmataClass::sendValueAsTwo7bitBytes(int value)
+void Adafruit_BLE_FirmataClass::sendValueAsTwo7bitBytes(int value)
 {
   FirmataSerial.write(value & B01111111); // LSB
   FirmataSerial.write(value >> 7 & B01111111); // MSB
 }
 
-void BLE_FirmataClass::startSysex(void)
+void Adafruit_BLE_FirmataClass::startSysex(void)
 {
   FirmataSerial.write(START_SYSEX);
 }
 
-void BLE_FirmataClass::endSysex(void)
+void Adafruit_BLE_FirmataClass::endSysex(void)
 {
   FirmataSerial.write(END_SYSEX);
 }
@@ -48,7 +48,7 @@ void BLE_FirmataClass::endSysex(void)
 //* Constructors
 //******************************************************************************
 
-BLE_FirmataClass::BLE_FirmataClass(Adafruit_BLE_UART &s) : FirmataSerial(s)
+Adafruit_BLE_FirmataClass::Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s) : FirmataSerial(s)
 {
   firmwareVersionCount = 0;
   systemReset();
@@ -59,14 +59,14 @@ BLE_FirmataClass::BLE_FirmataClass(Adafruit_BLE_UART &s) : FirmataSerial(s)
 //******************************************************************************
 
 /* begin method for overriding default serial bitrate */
-void BLE_FirmataClass::begin(void)
+void Adafruit_BLE_FirmataClass::begin(void)
 {
   blinkVersion();
   printVersion();
   printFirmwareVersion();
 }
 
-void BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
+void Adafruit_BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
 {
   FirmataSerial = s;
   systemReset();
@@ -75,13 +75,13 @@ void BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
 }
 
 // output the protocol version message to the serial port
-void BLE_FirmataClass::printVersion(void) {
+void Adafruit_BLE_FirmataClass::printVersion(void) {
   FirmataSerial.write(REPORT_VERSION);
   FirmataSerial.write(FIRMATA_MAJOR_VERSION);
   FirmataSerial.write(FIRMATA_MINOR_VERSION);
 }
 
-void BLE_FirmataClass::blinkVersion(void)
+void Adafruit_BLE_FirmataClass::blinkVersion(void)
 {
   // flash the pin with the protocol version
   pinMode(VERSION_BLINK_PIN,OUTPUT);
@@ -91,7 +91,7 @@ void BLE_FirmataClass::blinkVersion(void)
   delay(125);
 }
 
-void BLE_FirmataClass::printFirmwareVersion(void)
+void Adafruit_BLE_FirmataClass::printFirmwareVersion(void)
 {
   byte i;
 
@@ -107,7 +107,7 @@ void BLE_FirmataClass::printFirmwareVersion(void)
   }
 }
 
-void BLE_FirmataClass::setFirmwareNameAndVersion(const char *name, byte major, byte minor)
+void Adafruit_BLE_FirmataClass::setFirmwareNameAndVersion(const char *name, byte major, byte minor)
 {
   const char *filename;
   char *extension;
@@ -135,13 +135,13 @@ void BLE_FirmataClass::setFirmwareNameAndVersion(const char *name, byte major, b
 //------------------------------------------------------------------------------
 // Serial Receive Handling
 
-int BLE_FirmataClass::available(void)
+int Adafruit_BLE_FirmataClass::available(void)
 {
   return FirmataSerial.available();
 }
 
 
-void BLE_FirmataClass::processSysexMessage(void)
+void Adafruit_BLE_FirmataClass::processSysexMessage(void)
 {
   switch(storedInputData[0]) { //first byte in buffer is command
   case REPORT_FIRMWARE:
@@ -169,7 +169,7 @@ void BLE_FirmataClass::processSysexMessage(void)
   }
 }
 
-int BLE_FirmataClass::processInput(void)
+int Adafruit_BLE_FirmataClass::processInput(void)
 {
   int inputData = FirmataSerial.read(); // this is 'int' to handle -1 when no data
   int command;
@@ -275,7 +275,7 @@ int BLE_FirmataClass::processInput(void)
 // Serial Send Handling
 
 // send an analog message
-void BLE_FirmataClass::sendAnalog(byte pin, int value) 
+void Adafruit_BLE_FirmataClass::sendAnalog(byte pin, int value) 
 {
   // create a three byte buffer
   uint8_t sendbuffer[3];
@@ -292,7 +292,7 @@ void BLE_FirmataClass::sendAnalog(byte pin, int value)
 }
 
 // send a single digital pin in a digital message
-void BLE_FirmataClass::sendDigital(byte pin, int value) 
+void Adafruit_BLE_FirmataClass::sendDigital(byte pin, int value) 
 {
   /* TODO add single pin digital messages to the protocol, this needs to
    * track the last digital data sent so that it can be sure to change just
@@ -316,7 +316,7 @@ void BLE_FirmataClass::sendDigital(byte pin, int value)
 
 // send 14-bits in a single digital message (protocol v1)
 // send an 8-bit port in a single digital message (protocol v2)
-void BLE_FirmataClass::sendDigitalPort(byte portNumber, int portData)
+void Adafruit_BLE_FirmataClass::sendDigitalPort(byte portNumber, int portData)
 {
   // create a three byte buffer
   uint8_t sendbuffer[3];
@@ -328,7 +328,7 @@ void BLE_FirmataClass::sendDigitalPort(byte portNumber, int portData)
 }
 
 
-void BLE_FirmataClass::sendSysex(byte command, byte bytec, byte* bytev) 
+void Adafruit_BLE_FirmataClass::sendSysex(byte command, byte bytec, byte* bytev) 
 {
   byte i;
   startSysex();
@@ -339,14 +339,14 @@ void BLE_FirmataClass::sendSysex(byte command, byte bytec, byte* bytev)
   endSysex();
 }
 
-void BLE_FirmataClass::sendString(byte command, const char* string) 
+void Adafruit_BLE_FirmataClass::sendString(byte command, const char* string) 
 {
   sendSysex(command, strlen(string), (byte *)string);
 }
 
 
 // send a string as the protocol string type
-void BLE_FirmataClass::sendString(const char* string) 
+void Adafruit_BLE_FirmataClass::sendString(const char* string) 
 {
   sendString(STRING_DATA, string);
 }
@@ -355,7 +355,7 @@ void BLE_FirmataClass::sendString(const char* string)
 // Internal Actions/////////////////////////////////////////////////////////////
 
 // generic callbacks
-void BLE_FirmataClass::attach(byte command, callbackFunction newFunction)
+void Adafruit_BLE_FirmataClass::attach(byte command, callbackFunction newFunction)
 {
   switch(command) {
   case ANALOG_MESSAGE: currentAnalogCallback = newFunction; break;
@@ -366,26 +366,26 @@ void BLE_FirmataClass::attach(byte command, callbackFunction newFunction)
   }
 }
 
-void BLE_FirmataClass::attach(byte command, systemResetCallbackFunction newFunction)
+void Adafruit_BLE_FirmataClass::attach(byte command, systemResetCallbackFunction newFunction)
 {
   switch(command) {
   case SYSTEM_RESET: currentSystemResetCallback = newFunction; break;
   }
 }
 
-void BLE_FirmataClass::attach(byte command, stringCallbackFunction newFunction)
+void Adafruit_BLE_FirmataClass::attach(byte command, stringCallbackFunction newFunction)
 {
   switch(command) {
   case STRING_DATA: currentStringCallback = newFunction; break;
   }
 }
 
-void BLE_FirmataClass::attach(byte command, sysexCallbackFunction newFunction)
+void Adafruit_BLE_FirmataClass::attach(byte command, sysexCallbackFunction newFunction)
 {
   currentSysexCallback = newFunction;
 }
 
-void BLE_FirmataClass::detach(byte command)
+void Adafruit_BLE_FirmataClass::detach(byte command)
 {
   switch(command) {
   case SYSTEM_RESET: currentSystemResetCallback = NULL; break;
@@ -399,7 +399,7 @@ void BLE_FirmataClass::detach(byte command)
 // sysex callbacks
 /*
  * this is too complicated for analogReceive, but maybe for Sysex?
- void BLE_FirmataClass::attachSysex(sysexFunction newFunction)
+ void Adafruit_BLE_FirmataClass::attachSysex(sysexFunction newFunction)
  {
  byte i;
  byte tmpCount = analogReceiveFunctionCount;
@@ -416,12 +416,11 @@ void BLE_FirmataClass::detach(byte command)
 
 //******************************************************************************
 //* Private Methods
-//******************************************************************************
-
+  //******************************************************************************/
 
 
 // resets the system state upon a SYSTEM_RESET message from the host software
-void BLE_FirmataClass::systemReset(void)
+void Adafruit_BLE_FirmataClass::systemReset(void)
 {
   byte i;
 
@@ -447,7 +446,7 @@ void BLE_FirmataClass::systemReset(void)
 
 // =============================================================================
 // used for flashing the pin for the version number
-void BLE_FirmataClass::pin13strobe(int count, int onInterval, int offInterval) 
+void Adafruit_BLE_FirmataClass::pin13strobe(int count, int onInterval, int offInterval) 
 {
   byte i;
   pinMode(VERSION_BLINK_PIN, OUTPUT);

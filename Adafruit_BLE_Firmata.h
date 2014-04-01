@@ -107,7 +107,7 @@ extern "C" {
 class Adafruit_BLE_FirmataClass
 {
 public:
-  BLE_FirmataClass(Adafruit_BLE_UART &s);
+    Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s);
 /* Arduino constructors */
     void begin();
     void begin(Adafruit_BLE_UART &s);
@@ -166,7 +166,7 @@ private:
     void endSysex(void);
 };
 
-extern BLE_FirmataClass BLE_Firmata;
+extern Adafruit_BLE_FirmataClass BLE_Firmata;
 
 /*==============================================================================
  * MACROS

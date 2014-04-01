@@ -3,10 +3,8 @@
  * from software on a host computer. It is intended to work with
  * any host computer software package.
  *
- * To download a host software package, please clink on the following link
- * to open the download page in your default browser.
- *
- * http://firmata.org/wiki/Download
+ * This version is modified to specifically work with Adafruit's BLE
+ * library. It no longer works over the standard "USB" connection!
  */
 
 /*
@@ -14,7 +12,8 @@
   Copyright (C) 2010-2011 Paul Stoffregen.  All rights reserved.
   Copyright (C) 2009 Shigeru Kobayashi.  All rights reserved.
   Copyright (C) 2009-2011 Jeff Hoefs.  All rights reserved.
-  
+  Copyright (C) 2014 Limor Fried/Kevin Townsend  All rights reserved.
+
   This library is free software; you can redistribute it and/or
   modify it under the terms of the GNU Lesser General Public
   License as published by the Free Software Foundation; either
@@ -32,9 +31,8 @@
 #include <Servo.h>
 #include <Wire.h>
 #include <SPI.h>
-#include <BLE_Firmata.h>
+#include <Adafruit_BLE_Firmata.h>
 #include "Adafruit_BLE_UART.h"
-
 
 #define AUTO_INPUT_PULLUPS true
 
@@ -50,7 +48,7 @@ Adafruit_BLE_UART BLEserial = Adafruit_BLE_UART(ADAFRUITBLE_REQ, ADAFRUITBLE_RDY
 
 
 // make one instance for the user to use
-BLE_FirmataClass BLE_Firmata(BLEserial);
+Adafruit_BLE_FirmataClass BLE_Firmata(BLEserial);
 
 
 /*==============================================================================
