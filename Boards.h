@@ -132,7 +132,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 #if defined(__AVR_ATmega168__) || defined(__AVR_ATmega328P__)
 #if defined(NUM_ANALOG_INPUTS) && NUM_ANALOG_INPUTS == 6
 #define TOTAL_ANALOG_PINS       6
-#define TOTAL_PINS              22 // 14 digital (not all are 'digital/available') + 6 analog
+#define TOTAL_PINS              20 // 14 digital (not all are 'digital/available') + 6 analog
 #else
 #define TOTAL_ANALOG_PINS       8
 #define TOTAL_PINS              22 // 14 digital + 8 analog
@@ -142,7 +142,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
 // we dont use digital 2 or 9, 10, 11, 12, 13 -> BTLE link
 #define IS_PIN_DIGITAL(p)       (((p) >= 3 && (p) <= 8) || ((p) >= 14  && (p) <= 19 ))
 #define IS_PIN_ANALOG(p)        ((p) >= 14 && (p) < 14 + TOTAL_ANALOG_PINS)
-#define IS_PIN_PWM(p)           digitalPinHasPWM(p)
+#define IS_PIN_PWM(p)           ((p) == 3 || (p) == 5 || (p) == 6)
 #define IS_PIN_SERVO(p)         (IS_PIN_DIGITAL(p) && (p) - 2 < MAX_SERVOS)
 #define IS_PIN_I2C(p)           ((p) == 18 || (p) == 19)
 #define PIN_TO_DIGITAL(p)       (p)
