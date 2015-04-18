@@ -28,20 +28,35 @@ extern "C" {
 //* Support Functions
 //******************************************************************************
 
-void Adafruit_BLE_FirmataClass::sendValueAsTwo7bitBytes(int value)
-{
-  FirmataSerial.write(value & B01111111); // LSB
-  FirmataSerial.write(value >> 7 & B01111111); // MSB
+void Adafruit_BLE_FirmataClass::bufferedBLEWrite(uint8_t b) {
+  bufferedWrite[bufWriteCount++] = b;
+  if (bufWriteCount >= sizeof(bufferedWrite)) {
+    FirmataSerial.write(bufferedWrite, bufWriteCount);
+    bufWriteCount = 0;
+  }
 }
 
-void Adafruit_BLE_FirmataClass::startSysex(void)
+void Adafruit_BLE_FirmataClass::bufferedBLEWrite(void) {
+  FirmataSerial.write(bufferedWrite, bufWriteCount);
+  bufWriteCount = 0;
+}
+
+void Adafruit_BLE_FirmataClass::sendValueAsTwo7bitBytes(int value)
 {
-  FirmataSerial.write(START_SYSEX);
+  bufferedBLEWrite(value & B01111111);      // LSB
+  bufferedBLEWrite(value >> 7 & B01111111); // MSB
+}
+
+void Adafruit_BLE_FirmataClass::startSysex(byte command)
+{
+  bufferedBLEWrite(START_SYSEX);
+  bufferedBLEWrite(command);
 }
 
 void Adafruit_BLE_FirmataClass::endSysex(void)
 {
-  FirmataSerial.write(END_SYSEX);
+  bufferedBLEWrite(END_SYSEX);
+  bufferedBLEWrite();
 }
 
 //******************************************************************************
@@ -76,9 +91,12 @@ void Adafruit_BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
 
 // output the protocol version message to the serial port
 void Adafruit_BLE_FirmataClass::printVersion(void) {
-  FirmataSerial.write(REPORT_VERSION);
-  FirmataSerial.write(FIRMATA_MAJOR_VERSION);
-  FirmataSerial.write(FIRMATA_MINOR_VERSION);
+  static const uint8_t protover[] = {
+      REPORT_VERSION,
+      FIRMATA_MAJOR_VERSION,
+      FIRMATA_MINOR_VERSION
+  };
+  FirmataSerial.write((uint8_t *)protover, sizeof(protover));
 }
 
 void Adafruit_BLE_FirmataClass::blinkVersion(void)
@@ -96,10 +114,9 @@ void Adafruit_BLE_FirmataClass::printFirmwareVersion(void)
   byte i;
 
   if(firmwareVersionCount) { // make sure that the name has been set before reporting
-    startSysex();
-    FirmataSerial.write(REPORT_FIRMWARE);
-    FirmataSerial.write(firmwareVersionVector[0]); // major version number
-    FirmataSerial.write(firmwareVersionVector[1]); // minor version number
+    startSysex(REPORT_FIRMWARE);
+    bufferedBLEWrite(firmwareVersionVector[0]); // major version number
+    bufferedBLEWrite(firmwareVersionVector[1]); // minor version number
     for(i=2; i<firmwareVersionCount; ++i) {
       sendValueAsTwo7bitBytes(firmwareVersionVector[i]);
     }
@@ -331,11 +348,25 @@ void Adafruit_BLE_FirmataClass::sendDigitalPort(byte portNumber, int portData)
 void Adafruit_BLE_FirmataClass::sendSysex(byte command, byte bytec, byte* bytev) 
 {
   byte i;
-  startSysex();
-  FirmataSerial.write(command);
+  startSysex(command);
   for(i=0; i<bytec; i++) {
     sendValueAsTwo7bitBytes(bytev[i]);        
   }
+  endSysex();
+}
+
+void Adafruit_BLE_FirmataClass::sendSysexStart(byte command)
+{
+  startSysex(command);
+}
+
+void Adafruit_BLE_FirmataClass::sendSysexData(byte byteval)
+{
+    bufferedBLEWrite(byteval);
+}
+
+void Adafruit_BLE_FirmataClass::sendSysexEnd(void)
+{
   endSysex();
 }
 
@@ -363,6 +394,7 @@ void Adafruit_BLE_FirmataClass::attach(byte command, callbackFunction newFunctio
   case REPORT_ANALOG: currentReportAnalogCallback = newFunction; break;
   case REPORT_DIGITAL: currentReportDigitalCallback = newFunction; break;
   case SET_PIN_MODE: currentPinModeCallback = newFunction; break;
+  default: Serial.println(F("invalid attach command"));
   }
 }
 
@@ -457,7 +489,3 @@ void Adafruit_BLE_FirmataClass::pin13strobe(int count, int onInterval, int offIn
     digitalWrite(VERSION_BLINK_PIN, LOW);
   }
 }
-
-
-
-

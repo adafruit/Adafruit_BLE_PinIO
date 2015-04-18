@@ -354,7 +354,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
   byte slaveRegister;
   byte data;
   unsigned int delayTime; 
-  
+
   switch(command) {
   case I2C_REQUEST:
     mode = argv[1] & I2C_READ_WRITE_MODE_MASK;
@@ -482,57 +482,56 @@ void sysexCallback(byte command, byte argc, byte *argv)
     }
     break;
   case CAPABILITY_QUERY:
-    Serial.write(START_SYSEX);
-    Serial.write(CAPABILITY_RESPONSE);
+    Serial.println(F("cap response"));
+    BLE_Firmata.sendSysexStart(CAPABILITY_RESPONSE);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
       if (IS_PIN_DIGITAL(pin)) {
-        Serial.write((byte)INPUT);
-        Serial.write(1);
-        Serial.write((byte)OUTPUT);
-        Serial.write(1);
+        BLE_Firmata.sendSysexData((byte)INPUT);
+        BLE_Firmata.sendSysexData(1);
+        BLE_Firmata.sendSysexData((byte)OUTPUT);
+        BLE_Firmata.sendSysexData(1);
       }
       if (IS_PIN_ANALOG(pin)) {
-        Serial.write(ANALOG);
-        Serial.write(10);
+        BLE_Firmata.sendSysexData(ANALOG);
+        BLE_Firmata.sendSysexData(10);
       }
       if (IS_PIN_PWM(pin)) {
-        Serial.write(PWM);
-        Serial.write(8);
+        BLE_Firmata.sendSysexData(PWM);
+        BLE_Firmata.sendSysexData(8);
       }
       if (IS_PIN_SERVO(pin)) {
-        Serial.write(SERVO);
-        Serial.write(14);
+        BLE_Firmata.sendSysexData(SERVO);
+        BLE_Firmata.sendSysexData(14);
       }
       if (IS_PIN_I2C(pin)) {
-        Serial.write(I2C);
-        Serial.write(1);  // to do: determine appropriate value 
+        BLE_Firmata.sendSysexData(I2C);
+        BLE_Firmata.sendSysexData(1);  // to do: determine appropriate value
       }
-      Serial.write(127);
+      BLE_Firmata.sendSysexData(127);
     }
-    Serial.write(END_SYSEX);
+    BLE_Firmata.sendSysexEnd();
     break;
   case PIN_STATE_QUERY:
+    Serial.println(F("state query"));
     if (argc > 0) {
       byte pin=argv[0];
-      Serial.write(START_SYSEX);
-      Serial.write(PIN_STATE_RESPONSE);
-      Serial.write(pin);
+      BLE_Firmata.sendSysexStart(PIN_STATE_RESPONSE);
+      BLE_Firmata.sendSysexData(pin);
       if (pin < TOTAL_PINS) {
-        Serial.write((byte)pinConfig[pin]);
-	Serial.write((byte)pinState[pin] & 0x7F);
-	if (pinState[pin] & 0xFF80) Serial.write((byte)(pinState[pin] >> 7) & 0x7F);
-	if (pinState[pin] & 0xC000) Serial.write((byte)(pinState[pin] >> 14) & 0x7F);
+        BLE_Firmata.sendSysexData((byte)pinConfig[pin]);
+        BLE_Firmata.sendSysexData((byte)pinState[pin] & 0x7F);
+        if (pinState[pin] & 0xFF80) BLE_Firmata.sendSysexData((byte)(pinState[pin] >> 7) & 0x7F);
+        if (pinState[pin] & 0xC000) BLE_Firmata.sendSysexData((byte)(pinState[pin] >> 14) & 0x7F);
       }
-      Serial.write(END_SYSEX);
+      BLE_Firmata.sendSysexEnd();
     }
     break;
   case ANALOG_MAPPING_QUERY:
-    Serial.write(START_SYSEX);
-    Serial.write(ANALOG_MAPPING_RESPONSE);
+    BLE_Firmata.sendSysexStart(ANALOG_MAPPING_RESPONSE);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
-      Serial.write(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
+      BLE_Firmata.sendSysexData(IS_PIN_ANALOG(pin) ? PIN_TO_ANALOG(pin) : 127);
     }
-    Serial.write(END_SYSEX);
+    BLE_Firmata.sendSysexEnd();
     break;
   }
 }
@@ -621,7 +620,7 @@ void setup()
 
 void firmataInit() {
   Serial.println(F("Init firmata"));
-  //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+  BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
   //Serial.println(F("firmata analog"));
   BLE_Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
   //Serial.println(F("firmata digital"));

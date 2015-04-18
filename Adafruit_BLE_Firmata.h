@@ -126,7 +126,10 @@ public:
 	void sendDigitalPort(byte portNumber, int portData);
     void sendString(const char* string);
     void sendString(byte command, const char* string);
-	void sendSysex(byte command, byte bytec, byte* bytev);
+    void sendSysex(byte command, byte bytec, byte* bytev);
+    void sendSysexStart(byte command);
+    void sendSysexData(byte byteval);
+    void sendSysexEnd(void);
 /* attach & detach callback functions to messages */
     void attach(byte command, callbackFunction newFunction);
     void attach(byte command, systemResetCallbackFunction newFunction);
@@ -156,14 +159,18 @@ private:
     systemResetCallbackFunction currentSystemResetCallback;
     stringCallbackFunction currentStringCallback;
     sysexCallbackFunction currentSysexCallback;
+    uint8_t bufferedWrite[ACI_PIPE_TX_DATA_MAX_LEN];
+    byte bufWriteCount;
 
 /* private methods ------------------------------ */
     void processSysexMessage(void);
 	void systemReset(void);
     void pin13strobe(int count, int onInterval, int offInterval);
     void sendValueAsTwo7bitBytes(int value);
-    void startSysex(void);
+    void startSysex(byte command);
     void endSysex(void);
+    void bufferedBLEWrite(uint8_t b);
+    void bufferedBLEWrite(void);
 };
 
 extern Adafruit_BLE_FirmataClass BLE_Firmata;
