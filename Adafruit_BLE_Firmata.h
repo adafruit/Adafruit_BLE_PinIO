@@ -140,6 +140,7 @@ public:
     /* board details */
     void setUsablePins(uint8_t *digitaliopins, uint8_t num_digitaliopins,     
 		       uint8_t *analogiopins, uint8_t num_analogiopins,
+		       uint8_t *pwmpins, uint8_t num_pwmpins,
 		       uint8_t *servopins, uint8_t num_servopins,
 		       uint8_t sdapin, uint8_t sclpin);
 
@@ -147,7 +148,7 @@ public:
     uint8_t PIN_TO_DIGITAL(uint8_t p) { return p; }
     boolean IS_PIN_ANALOG(uint8_t p) { return contains(_analogiopins, _num_analogiopins, p); }
     uint8_t PIN_TO_ANALOG(uint8_t p);
-    boolean IS_PIN_PWM(uint8_t p)  { return digitalPinHasPWM(p); }
+    boolean IS_PIN_PWM(uint8_t p)  { return contains(_pwmpins, _num_pwmpins, p); }
     uint8_t PIN_TO_PWM(uint8_t p) { return p; }
     boolean IS_PIN_SERVO(uint8_t p) { return contains(_servopins, _num_servopins, p); }
     uint8_t PIN_TO_SERVO(uint8_t p) { return p-2;}
@@ -163,7 +164,8 @@ private:
     Stream &FirmataSerial;
 
     uint8_t *_digitaliopins, _num_digitaliopins;
-    uint8_t *_analogiopins; // same number as above
+    uint8_t *_pwmpins, _num_pwmpins;
+    uint8_t *_analogiopins; 
     uint8_t *_servopins, _num_servopins;
     uint8_t _sdapin, _sclpin;
 

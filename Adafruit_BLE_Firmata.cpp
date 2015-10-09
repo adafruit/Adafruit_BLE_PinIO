@@ -435,6 +435,7 @@ void Adafruit_BLE_FirmataClass::systemReset(void)
 
 void Adafruit_BLE_FirmataClass::setUsablePins(uint8_t *digitaliopins, uint8_t num_digitaliopins,     
 					      uint8_t *analogiopins, uint8_t num_analogiopins,
+					      uint8_t *pwmpins, uint8_t num_pwmpins,
 					      uint8_t *servopins, uint8_t num_servopins,
 					      uint8_t sdapin, uint8_t sclpin)
 {
@@ -442,6 +443,8 @@ void Adafruit_BLE_FirmataClass::setUsablePins(uint8_t *digitaliopins, uint8_t nu
   _num_digitaliopins = num_digitaliopins;
   _analogiopins = analogiopins;
   _num_analogiopins = num_analogiopins;
+  _pwmpins = servopins;
+  _num_pwmpins = num_pwmpins;
   _servopins = servopins;
   _num_servopins = num_servopins;
   _sdapin = sdapin;

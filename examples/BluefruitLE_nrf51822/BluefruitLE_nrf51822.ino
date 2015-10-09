@@ -13,10 +13,11 @@
 /* for nrf51822 + UNO - hardware SPI plus cs 10, rst 9, irq 2 */
 uint8_t boards_digitaliopins[] = {3, 4, 5, 6, 7, 8, A0, A1, A2, A3, A4, A5};
 uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
+uint8_t boards_pwmpins[] = {3, 5, 6, 9, 10, 11};
 uint8_t boards_servopins[] = {9, 10};
 uint8_t boards_i2cpins[] = {SDA, SCL};
 
-#define TOTAL_PINS     20   /* highest number in boards_digitaliopins MEMEFIXME:automate */
+#define TOTAL_PINS     NUM_DIGITAL_PINS   /* highest number in boards_digitaliopins MEMEFIXME:automate */
 #define TOTAL_PORTS    ((TOTAL_PINS + 7) / 8)
 
 /***********************************************************/
@@ -33,7 +34,7 @@ uint8_t boards_i2cpins[] = {SDA, SCL};
 
 
 /* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
-Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_SCK, BLUEFRUIT_SPI_MISO, BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 // our current connection status
 boolean lastBTLEstatus, BTLEstatus;
 
@@ -170,7 +171,7 @@ void checkDigitalInputs(boolean forceSend = false)
  */
 void setPinModeCallback(byte pin, int mode)
 {
-  //Serial.print("Setting pin #"); Serial.print(pin); Serial.print(" to "); Serial.println(mode);
+  Serial.print("Setting pin #"); Serial.print(pin); Serial.print(" to "); Serial.println(mode);
   if ((pinConfig[pin] == I2C) && (isI2CEnabled) && (mode != I2C)) {
     // disable i2c so pins can be used for other functions
     // the following if statements should reconfigure the pins properly
@@ -609,8 +610,14 @@ void setup()
   Serial.begin(9600);
   Serial.println(F("Adafruit Bluefruit LE Firmata test"));
   
+  Serial.print("Total pins: "); Serial.println(NUM_DIGITAL_PINS);
+  for (uint8_t i=0; i<sizeof(boards_analogiopins); i++) {
+    Serial.println(boards_analogiopins[i]);
+  }
+  
   BLE_Firmata.setUsablePins(boards_digitaliopins, sizeof(boards_digitaliopins), 
     boards_analogiopins, sizeof(boards_analogiopins),
+    boards_pwmpins, sizeof(boards_pwmpins),
     boards_servopins, sizeof(boards_servopins), SDA, SCL);
 
   /* Initialise the module */
