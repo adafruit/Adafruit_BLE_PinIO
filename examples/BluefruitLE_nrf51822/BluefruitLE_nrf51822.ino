@@ -7,18 +7,40 @@
   #include <SoftwareSerial.h>
 #endif
 
-
 /***********************************************************/
 
-/* for nrf51822 + UNO - hardware SPI plus cs 10, rst 9, irq 2 */
-uint8_t boards_digitaliopins[] = {3, 4, 5, 6, 7, 8, A0, A1, A2, A3, A4, A5};
-uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
-uint8_t boards_pwmpins[] = {3, 5, 6, 9, 10, 11};
-uint8_t boards_servopins[] = {9, 10};
-uint8_t boards_i2cpins[] = {SDA, SCL};
+// For UNO + nRF58122 SPI & shield
+//uint8_t boards_digitaliopins[] = {2, 3, 5, 6, 9, 10, A0, A1, A2, A3, A4, A5};
+// for Bluefruit Micro or Feather 32u4 Bluefruit
+//uint8_t boards_digitaliopins[] = {0,1,2,3,5,6,9,10,11,12,13,A0,A1,A2,A3,A4,A5};
+// for Feather M0 Bluefruit
+uint8_t boards_digitaliopins[] = {0,1,5,6,9,10,11,12,13,20,21,A0,A1,A2,A3,A4,A5};
+
+#if defined(__AVR_ATmega328P__)
+  uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
+  uint8_t boards_pwmpins[] = {3, 5, 6, 9, 10, 11};
+  uint8_t boards_servopins[] = {9, 10};
+  uint8_t boards_i2cpins[] = {SDA, SCL};
+#elif defined(__AVR_ATmega32U4__)
+  uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
+  uint8_t boards_pwmpins[] = {3, 5, 6, 9, 10, 11, 13};
+  uint8_t boards_servopins[] = {9, 10};
+  uint8_t boards_i2cpins[] = {SDA, SCL};
+#elif defined(__SAMD21G18A__)
+  #define SDA PIN_WIRE_SDA
+  #define SCL PIN_WIRE_SCL
+  uint8_t boards_analogiopins[] = {PIN_A0, PIN_A1, PIN_A2, PIN_A3, PIN_A4, PIN_A5,PIN_A6, PIN_A7};  // A0 == digital 14, etc
+  uint8_t boards_pwmpins[] = {3,4,5,6,8,10,11,12,A0,A1,A2,A3,A4,A5};
+  uint8_t boards_servopins[] = {9, 10};
+  uint8_t boards_i2cpins[] = {SDA, SCL};
+  #define Serial SerialUSB
+  #define NUM_DIGITAL_PINS 26
+#endif
+
 
 #define TOTAL_PINS     NUM_DIGITAL_PINS   /* highest number in boards_digitaliopins MEMEFIXME:automate */
 #define TOTAL_PORTS    ((TOTAL_PINS + 7) / 8)
+
 
 /***********************************************************/
 
@@ -34,7 +56,9 @@ uint8_t boards_i2cpins[] = {SDA, SCL};
 
 
 /* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
-Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_SCK, BLUEFRUIT_SPI_MISO, BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+
+
 // our current connection status
 boolean lastBTLEstatus, BTLEstatus;
 
@@ -199,7 +223,6 @@ void setPinModeCallback(byte pin, int mode)
       Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to analog"));
       if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
         pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), INPUT); // disable output driver
-        digitalWrite(BLE_Firmata.PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
       }
       pinConfig[pin] = ANALOG;
       lastAnalogReads[BLE_Firmata.PIN_TO_ANALOG(pin)] = -1;
@@ -208,11 +231,11 @@ void setPinModeCallback(byte pin, int mode)
   case INPUT:
     if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
       Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to input"));
-      pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), INPUT); // disable output driver
+      
       if (AUTO_INPUT_PULLUPS) {
-        digitalWrite(BLE_Firmata.PIN_TO_DIGITAL(pin), HIGH); // enable internal pull-ups
+        pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), INPUT_PULLUP); // disable output driver
       } else {
-        digitalWrite(BLE_Firmata.PIN_TO_DIGITAL(pin), LOW); // disable internal pull-ups
+        pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), INPUT); // disable output driver
       }
       pinConfig[pin] = INPUT;
       
@@ -270,6 +293,7 @@ void analogWriteCallback(byte pin, int value)
     case PWM:
       if (BLE_Firmata.IS_PIN_PWM(pin))
         analogWrite(BLE_Firmata.PIN_TO_PWM(pin), value);
+        Serial.print("pwm("); Serial.print(BLE_Firmata.PIN_TO_PWM(pin)); Serial.print(","); Serial.print(value); Serial.println(")");
         pinState[pin] = value;
       break;
     }
@@ -278,6 +302,7 @@ void analogWriteCallback(byte pin, int value)
 
 void digitalWriteCallback(byte port, int value)
 {
+  Serial.print("DWCx"); Serial.print(port, HEX); Serial.print(" "); Serial.println(value);
   byte pin, lastPin, mask=1, pinWriteMask=0;
 
   if (port < TOTAL_PORTS) {
@@ -287,15 +312,11 @@ void digitalWriteCallback(byte port, int value)
     for (pin=port*8; pin < lastPin; pin++) {
       // do not disturb non-digital pins (eg, Rx & Tx)
       if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
-        // only write to OUTPUT and INPUT (enables pullup)
+        // only write to OUTPUT 
         // do not touch pins in PWM, ANALOG, SERVO or other modes
-        if (pinConfig[pin] == OUTPUT || pinConfig[pin] == INPUT) {
+        if (pinConfig[pin] == OUTPUT) {
           pinWriteMask |= mask;
           pinState[pin] = ((byte)value & mask) ? 1 : 0;
-          
-          if (AUTO_INPUT_PULLUPS && ( pinConfig[pin] == INPUT)) {
-            value |= mask;
-          }
         }
       }
       mask = mask << 1;
@@ -353,6 +374,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
   byte data;
   unsigned int delayTime; 
   
+  Serial.println("********** Sysex callback");
   switch(command) {
   case I2C_REQUEST:
     mode = argv[1] & I2C_READ_WRITE_MODE_MASK;
@@ -480,57 +502,89 @@ void sysexCallback(byte command, byte argc, byte *argv)
     }
     break;
   case CAPABILITY_QUERY:
-    Serial.write(START_SYSEX);
-    Serial.write(CAPABILITY_RESPONSE);
+    bluefruit.write(START_SYSEX);
+    bluefruit.write(CAPABILITY_RESPONSE);
+
+    Serial.print(" 0x"); Serial.print(START_SYSEX, HEX);
+    Serial.print(" 0x"); Serial.println(CAPABILITY_RESPONSE, HEX);
+    delay(10);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
+      Serial.print("\t#"); Serial.println(pin);
       if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
-        Serial.write((byte)INPUT);
-        Serial.write(1);
-        Serial.write((byte)OUTPUT);
-        Serial.write(1);
+        bluefruit.write((byte)INPUT);
+        bluefruit.write(1);
+        bluefruit.write((byte)OUTPUT);
+        bluefruit.write(1);
+
+        Serial.print(" 0x"); Serial.print(INPUT, HEX);
+        Serial.print(" 0x"); Serial.print(1, HEX);
+        Serial.print(" 0x"); Serial.print(OUTPUT, HEX);
+        Serial.print(" 0x"); Serial.println(1, HEX);
+        delay(20);
+      } else {
+        bluefruit.write(127);
+        Serial.print(" 0x"); Serial.println(127, HEX);
+        delay(20);
+        continue;
       }
       if (BLE_Firmata.IS_PIN_ANALOG(pin)) {
-        Serial.write(ANALOG);
-        Serial.write(10);
+        bluefruit.write(ANALOG);
+        bluefruit.write(10);
+        
+        Serial.print(" 0x"); Serial.print(ANALOG, HEX);
+        Serial.print(" 0x"); Serial.println(10, HEX);
+        delay(20);
       }
       if (BLE_Firmata.IS_PIN_PWM(pin)) {
-        Serial.write(PWM);
-        Serial.write(8);
+        bluefruit.write(PWM);
+        bluefruit.write(8);
+
+        Serial.print(" 0x"); Serial.print(PWM, HEX);
+        Serial.print(" 0x"); Serial.println(8, HEX);
+        delay(20);
       }
       if (BLE_Firmata.IS_PIN_SERVO(pin)) {
-        Serial.write(SERVO);
-        Serial.write(14);
+        bluefruit.write(SERVO);
+        bluefruit.write(14);
+
+        Serial.print(" 0x"); Serial.print(SERVO, HEX);
+        Serial.print(" 0x"); Serial.println(14, HEX);
+        delay(20);
       }
       if (BLE_Firmata.IS_PIN_I2C(pin)) {
-        Serial.write(I2C);
-        Serial.write(1);  // to do: determine appropriate value 
+        bluefruit.write(I2C);
+        bluefruit.write(1);  // to do: determine appropriate value 
+        delay(20);
       }
-      Serial.write(127);
+      bluefruit.write(127);
+      Serial.print(" 0x"); Serial.println(127, HEX);
     }
-    Serial.write(END_SYSEX);
+    bluefruit.write(END_SYSEX);
+    Serial.print(" 0x"); Serial.println(END_SYSEX, HEX);
     break;
   case PIN_STATE_QUERY:
     if (argc > 0) {
       byte pin=argv[0];
-      Serial.write(START_SYSEX);
-      Serial.write(PIN_STATE_RESPONSE);
-      Serial.write(pin);
+      bluefruit.write(START_SYSEX);
+      bluefruit.write(PIN_STATE_RESPONSE);
+      bluefruit.write(pin);
       if (pin < TOTAL_PINS) {
-        Serial.write((byte)pinConfig[pin]);
-	Serial.write((byte)pinState[pin] & 0x7F);
-	if (pinState[pin] & 0xFF80) Serial.write((byte)(pinState[pin] >> 7) & 0x7F);
-	if (pinState[pin] & 0xC000) Serial.write((byte)(pinState[pin] >> 14) & 0x7F);
+        bluefruit.write((byte)pinConfig[pin]);
+	bluefruit.write((byte)pinState[pin] & 0x7F);
+	if (pinState[pin] & 0xFF80) bluefruit.write((byte)(pinState[pin] >> 7) & 0x7F);
+	if (pinState[pin] & 0xC000) bluefruit.write((byte)(pinState[pin] >> 14) & 0x7F);
       }
-      Serial.write(END_SYSEX);
+      bluefruit.write(END_SYSEX);
     }
     break;
   case ANALOG_MAPPING_QUERY:
-    Serial.write(START_SYSEX);
-    Serial.write(ANALOG_MAPPING_RESPONSE);
+    Serial.println("Analog mapping query");
+    bluefruit.write(START_SYSEX);
+    bluefruit.write(ANALOG_MAPPING_RESPONSE);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
-      Serial.write(BLE_Firmata.IS_PIN_ANALOG(pin) ? BLE_Firmata.PIN_TO_ANALOG(pin) : 127);
+      bluefruit.write(BLE_Firmata.IS_PIN_ANALOG(pin) ? BLE_Firmata.PIN_TO_ANALOG(pin) : 127);
     }
-    Serial.write(END_SYSEX);
+    bluefruit.write(END_SYSEX);
     break;
   }
 }
@@ -606,7 +660,8 @@ void systemResetCallback()
 
 void setup() 
 {
-  while (!Serial);
+  while (!Serial) delay(1);
+  
   Serial.begin(9600);
   Serial.println(F("Adafruit Bluefruit LE Firmata test"));
   
