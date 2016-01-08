@@ -7,16 +7,30 @@
   #include <SoftwareSerial.h>
 #endif
 
-/***********************************************************/
+/************************  CONFIGURATION SECTION ***********************************/
+/*
+Don't forget to also change the BluefruitConfig.h for the SPI or UART connection
+and pinout you are using!
 
-// For UNO + nRF58122 SPI & shield
-//uint8_t boards_digitaliopins[] = {2, 3, 5, 6, 9, 10, A0, A1, A2, A3, A4, A5};
-// for Bluefruit Micro or Feather 32u4 Bluefruit
+Then below, you can edit the list of pins that are available. Remove any pins
+that are used for accessories or for talking to the BLE module!
+*/
+
+/************** For Bluefruit Micro or Feather 32u4 Bluefruit ************/
 //uint8_t boards_digitaliopins[] = {0,1,2,3,5,6,9,10,11,12,13,A0,A1,A2,A3,A4,A5};
-// for Feather M0 Bluefruit
-uint8_t boards_digitaliopins[] = {0,1,5,6,9,10,11,12,13,20,21,A0,A1,A2,A3,A4,A5};
 
-#if defined(__AVR_ATmega328P__)
+/************** For UNO + nRF58122 SPI & shield ************/
+//uint8_t boards_digitaliopins[] = {2, 3, 5, 6, 9, 10, A0, A1, A2, A3, A4, A5}; 
+
+/************** For Bluefruit M0 Bluefruit ************/
+//uint8_t boards_digitaliopins[] = {0,1,5,6,9,10,11,12,13,20,21,A0,A1,A2,A3,A4,A5};
+
+#if !defined(boards_digitaliopins)
+#error "Uncomment one of the boards_digitaliopins to configure the available pins"
+#endif
+
+#if defined(__AVR_ATmega328P__) 
+  // Standard setup for UNO, no need to tweak
   uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
   uint8_t boards_pwmpins[] = {3, 5, 6, 9, 10, 11};
   uint8_t boards_servopins[] = {9, 10};

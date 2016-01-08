@@ -65,7 +65,7 @@ void Adafruit_BLE_FirmataClass::begin(void)
   printFirmwareVersion();
 }
 
-void Adafruit_BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
+void Adafruit_BLE_FirmataClass::begin(Stream &s)
 {
   FirmataSerial = s;
   systemReset();

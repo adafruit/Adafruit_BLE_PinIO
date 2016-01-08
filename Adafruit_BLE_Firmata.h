@@ -17,7 +17,8 @@
 #ifndef Adafruit_BLE_Firmata_h
 #define Adafruit_BLE_Firmata_h
 
-#include "Adafruit_BLE_UART.h"
+#include <Arduino.h>
+
 //#include "Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
 
 //#define BLE_DEBUG
@@ -107,12 +108,11 @@ extern "C" {
 class Adafruit_BLE_FirmataClass
 {
 public:
-  Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s);
   Adafruit_BLE_FirmataClass(Stream &s);
 
 /* Arduino constructors */
     void begin();
-    void begin(Adafruit_BLE_UART &s);
+    void begin(Stream &s);
 /* querying functions */
     void printVersion(void);
     void blinkVersion(void);
