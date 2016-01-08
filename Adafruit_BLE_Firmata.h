@@ -17,10 +17,11 @@
 #ifndef Adafruit_BLE_Firmata_h
 #define Adafruit_BLE_Firmata_h
 
-#include "Adafruit_BLE_UART.h"
-#include "Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
+#include <Arduino.h>
 
-#define BLE_DEBUG
+//#include "Boards.h"  /* Hardware Abstraction Layer + Wiring/Arduino */
+
+//#define BLE_DEBUG
 
 // move the following defines to Firmata.h?
 #define I2C_WRITE B00000000
@@ -107,10 +108,11 @@ extern "C" {
 class Adafruit_BLE_FirmataClass
 {
 public:
-    Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s);
+  Adafruit_BLE_FirmataClass(Stream &s);
+
 /* Arduino constructors */
     void begin();
-    void begin(Adafruit_BLE_UART &s);
+    void begin(Stream &s);
 /* querying functions */
     void printVersion(void);
     void blinkVersion(void);
@@ -134,8 +136,42 @@ public:
     void attach(byte command, sysexCallbackFunction newFunction);
     void detach(byte command);
 
+
+    /* board details */
+    void setUsablePins(uint8_t *digitaliopins, uint8_t num_digitaliopins,     
+		       uint8_t *analogiopins, uint8_t num_analogiopins,
+		       uint8_t *pwmpins, uint8_t num_pwmpins,
+		       uint8_t *servopins, uint8_t num_servopins,
+		       uint8_t sdapin, uint8_t sclpin);
+
+    boolean IS_PIN_DIGITAL(uint8_t p) { return contains(_digitaliopins,_num_digitaliopins, p); }
+    uint8_t PIN_TO_DIGITAL(uint8_t p) { return p; }
+    boolean IS_PIN_ANALOG(uint8_t p) { return contains(_analogiopins, _num_analogiopins, p); }
+    uint8_t PIN_TO_ANALOG(uint8_t p);
+    boolean IS_PIN_PWM(uint8_t p)  { return contains(_pwmpins, _num_pwmpins, p); }
+    uint8_t PIN_TO_PWM(uint8_t p) { return p; }
+    boolean IS_PIN_SERVO(uint8_t p) { return contains(_servopins, _num_servopins, p); }
+    uint8_t PIN_TO_SERVO(uint8_t p) { return p-2;}
+    boolean IS_PIN_I2C(uint8_t p)  { return (p == _sdapin) || (p == _sclpin); }
+
+    unsigned char  readPort(byte port, byte bitmask);
+    unsigned char  writePort(byte port, byte value, byte bitmask);
+
+
+    uint8_t _num_analogiopins;
+
 private:
-    Adafruit_BLE_UART &FirmataSerial;
+    Stream &FirmataSerial;
+
+    uint8_t *_digitaliopins, _num_digitaliopins;
+    uint8_t *_pwmpins, _num_pwmpins;
+    uint8_t *_analogiopins; 
+    uint8_t *_servopins, _num_servopins;
+    uint8_t _sdapin, _sclpin;
+
+    boolean contains(uint8_t *set, uint8_t num, uint8_t test);
+    uint8_t location(uint8_t *set, uint8_t num, uint8_t test);
+
 /* firmware name and version */
     byte firmwareVersionCount;
     byte *firmwareVersionVector;
@@ -164,6 +200,7 @@ private:
     void sendValueAsTwo7bitBytes(int value);
     void startSysex(void);
     void endSysex(void);
+
 };
 
 extern Adafruit_BLE_FirmataClass BLE_Firmata;

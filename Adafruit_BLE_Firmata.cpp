@@ -48,7 +48,7 @@ void Adafruit_BLE_FirmataClass::endSysex(void)
 //* Constructors
 //******************************************************************************
 
-Adafruit_BLE_FirmataClass::Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s) : FirmataSerial(s)
+Adafruit_BLE_FirmataClass::Adafruit_BLE_FirmataClass(Stream &s) : FirmataSerial(s)
 {
   firmwareVersionCount = 0;
   systemReset();
@@ -61,12 +61,11 @@ Adafruit_BLE_FirmataClass::Adafruit_BLE_FirmataClass(Adafruit_BLE_UART &s) : Fir
 /* begin method for overriding default serial bitrate */
 void Adafruit_BLE_FirmataClass::begin(void)
 {
-  blinkVersion();
   printVersion();
   printFirmwareVersion();
 }
 
-void Adafruit_BLE_FirmataClass::begin(Adafruit_BLE_UART &s)
+void Adafruit_BLE_FirmataClass::begin(Stream &s)
 {
   FirmataSerial = s;
   systemReset();
@@ -79,16 +78,6 @@ void Adafruit_BLE_FirmataClass::printVersion(void) {
   FirmataSerial.write(REPORT_VERSION);
   FirmataSerial.write(FIRMATA_MAJOR_VERSION);
   FirmataSerial.write(FIRMATA_MINOR_VERSION);
-}
-
-void Adafruit_BLE_FirmataClass::blinkVersion(void)
-{
-  // flash the pin with the protocol version
-  pinMode(VERSION_BLINK_PIN,OUTPUT);
-  pin13strobe(FIRMATA_MAJOR_VERSION, 40, 210);
-  delay(250);
-  pin13strobe(FIRMATA_MINOR_VERSION, 40, 210);
-  delay(125);
 }
 
 void Adafruit_BLE_FirmataClass::printFirmwareVersion(void)
@@ -444,20 +433,75 @@ void Adafruit_BLE_FirmataClass::systemReset(void)
 
 
 
-// =============================================================================
-// used for flashing the pin for the version number
-void Adafruit_BLE_FirmataClass::pin13strobe(int count, int onInterval, int offInterval) 
+void Adafruit_BLE_FirmataClass::setUsablePins(uint8_t *digitaliopins, uint8_t num_digitaliopins,     
+					      uint8_t *analogiopins, uint8_t num_analogiopins,
+					      uint8_t *pwmpins, uint8_t num_pwmpins,
+					      uint8_t *servopins, uint8_t num_servopins,
+					      uint8_t sdapin, uint8_t sclpin)
 {
-  byte i;
-  pinMode(VERSION_BLINK_PIN, OUTPUT);
-  for(i=0; i<count; i++) {
-    delay(offInterval);
-    digitalWrite(VERSION_BLINK_PIN, HIGH);
-    delay(onInterval);
-    digitalWrite(VERSION_BLINK_PIN, LOW);
-  }
+  _digitaliopins = digitaliopins;
+  _num_digitaliopins = num_digitaliopins;
+  _analogiopins = analogiopins;
+  _num_analogiopins = num_analogiopins;
+  _pwmpins = servopins;
+  _num_pwmpins = num_pwmpins;
+  _servopins = servopins;
+  _num_servopins = num_servopins;
+  _sdapin = sdapin;
+  _sclpin = sclpin;
 }
 
 
 
+boolean  Adafruit_BLE_FirmataClass::contains(uint8_t *set, uint8_t num, uint8_t test) {
+  for (uint8_t i=0; i<num; i++) { 
+    if (set[i] == test) return true;
+  }
+  return false;
+}
 
+uint8_t  Adafruit_BLE_FirmataClass::location(uint8_t *set, uint8_t num, uint8_t test) {
+  for (uint8_t i=0; i<num; i++) { 
+    if (set[i] == test) return i;
+  }
+  return 255;
+}
+
+uint8_t Adafruit_BLE_FirmataClass::PIN_TO_ANALOG(uint8_t p) {
+  return location(_analogiopins, _num_analogiopins, p);
+}
+
+/*==============================================================================
+ * readPort() - Read an 8 bit port
+ *============================================================================*/
+
+unsigned char  Adafruit_BLE_FirmataClass::readPort(byte port, byte bitmask)
+{
+  unsigned char out=0, pin=port*8;
+  if (IS_PIN_DIGITAL(pin+0) && (bitmask & 0x01) && digitalRead(PIN_TO_DIGITAL(pin+0))) out |= 0x01;
+  if (IS_PIN_DIGITAL(pin+1) && (bitmask & 0x02) && digitalRead(PIN_TO_DIGITAL(pin+1))) out |= 0x02;
+  if (IS_PIN_DIGITAL(pin+2) && (bitmask & 0x04) && digitalRead(PIN_TO_DIGITAL(pin+2))) out |= 0x04;
+  if (IS_PIN_DIGITAL(pin+3) && (bitmask & 0x08) && digitalRead(PIN_TO_DIGITAL(pin+3))) out |= 0x08;
+  if (IS_PIN_DIGITAL(pin+4) && (bitmask & 0x10) && digitalRead(PIN_TO_DIGITAL(pin+4))) out |= 0x10;
+  if (IS_PIN_DIGITAL(pin+5) && (bitmask & 0x20) && digitalRead(PIN_TO_DIGITAL(pin+5))) out |= 0x20;
+  if (IS_PIN_DIGITAL(pin+6) && (bitmask & 0x40) && digitalRead(PIN_TO_DIGITAL(pin+6))) out |= 0x40;
+  if (IS_PIN_DIGITAL(pin+7) && (bitmask & 0x80) && digitalRead(PIN_TO_DIGITAL(pin+7))) out |= 0x80;
+  return out;
+
+}
+
+/*==============================================================================
+ * writePort() - Write an 8 bit port, only touch pins specified by a bitmask
+ *============================================================================*/
+
+unsigned char  Adafruit_BLE_FirmataClass::writePort(byte port, byte value, byte bitmask)
+{
+	byte pin=port*8;
+	for (uint8_t i=0; i<8; i++) {
+	  if (bitmask & (1 << i)) {
+	    // dont touch non-digital pins
+	    if (IS_PIN_DIGITAL(pin+i))
+	      digitalWrite(PIN_TO_DIGITAL(pin+i), (value & (1 << i)));
+	  }
+	}
+}
