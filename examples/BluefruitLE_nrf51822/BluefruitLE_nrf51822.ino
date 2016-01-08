@@ -2,10 +2,17 @@
 #include <Wire.h>
 #include <SPI.h>
 #include <Adafruit_BLE_Firmata.h>
-#include "Adafruit_BLE_UART.h"
 #if not defined (_VARIANT_ARDUINO_DUE_X_) && not defined (_VARIANT_ARDUINO_ZERO_)
   #include <SoftwareSerial.h>
 #endif
+
+// Change this to whatever is the Serial console you want, either Serial or SerialUSB
+#define FIRMATADEBUG    SerialUSB
+// Pause for Serial console before beginning?
+#define WAITFORSERIAL   true
+// Print all BLE interactions?
+#define VERBOSE_MODE    false
+
 
 /************************  CONFIGURATION SECTION ***********************************/
 /*
@@ -25,10 +32,6 @@ that are used for accessories or for talking to the BLE module!
 /************** For Bluefruit M0 Bluefruit ************/
 //uint8_t boards_digitaliopins[] = {0,1,5,6,9,10,11,12,13,20,21,A0,A1,A2,A3,A4,A5};
 
-#if !defined(boards_digitaliopins)
-#error "Uncomment one of the boards_digitaliopins to configure the available pins"
-#endif
-
 #if defined(__AVR_ATmega328P__) 
   // Standard setup for UNO, no need to tweak
   uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
@@ -47,7 +50,6 @@ that are used for accessories or for talking to the BLE module!
   uint8_t boards_pwmpins[] = {3,4,5,6,8,10,11,12,A0,A1,A2,A3,A4,A5};
   uint8_t boards_servopins[] = {9, 10};
   uint8_t boards_i2cpins[] = {SDA, SCL};
-  #define Serial SerialUSB
   #define NUM_DIGITAL_PINS 26
 #endif
 
@@ -77,11 +79,11 @@ Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUI
 boolean lastBTLEstatus, BTLEstatus;
 
 // make one instance for the user to use
-Adafruit_BLE_FirmataClass BLE_Firmata(bluefruit);
+Adafruit_BLE_FirmataClass BLE_Firmata = Adafruit_BLE_FirmataClass(bluefruit);
 
 // A small helper
 void error(const __FlashStringHelper*err) {
-  Serial.println(err);
+  FIRMATADEBUG.println(err);
   while (1);
 }
 
@@ -179,7 +181,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
   portValue = portValue & portConfigInputs[portNumber];
   // only send if the value is different than previously sent
   if(forceSend || previousPINs[portNumber] != portValue) {
-    //Serial.print(F("Sending update for port ")); Serial.print(portNumber); Serial.print(" = 0x"); Serial.println(portValue, HEX);
+    //FIRMATADEBUG.print(F("Sending update for port ")); FIRMATADEBUG.print(portNumber); FIRMATADEBUG.print(" = 0x"); FIRMATADEBUG.println(portValue, HEX);
     BLE_Firmata.sendDigitalPort(portNumber, portValue);
     previousPINs[portNumber] = portValue;
   }
@@ -187,7 +189,7 @@ void outputPort(byte portNumber, byte portValue, byte forceSend)
 
 /* -----------------------------------------------------------------------------
  * check all the active digital inputs for change of state, then add any events
- * to the Serial output queue using Serial.print() */
+ * to the Serial output queue using () */
 void checkDigitalInputs(boolean forceSend = false)
 {
   /* Using non-looping code allows constants to be given to readPort().
@@ -195,9 +197,9 @@ void checkDigitalInputs(boolean forceSend = false)
    * to readPort() are compile-time constants. */
   for (uint8_t i=0; i<TOTAL_PORTS; i++) {
     if (reportPINs[i]) {
-     // Serial.print("Reporting on port "); Serial.print(i); Serial.print(" mask 0x"); Serial.println(portConfigInputs[i], HEX);
+     // FIRMATADEBUG.print("Reporting on port "); FIRMATADEBUG.print(i); FIRMATADEBUG.print(" mask 0x"); FIRMATADEBUG.println(portConfigInputs[i], HEX);
       uint8_t x = BLE_Firmata.readPort(i, portConfigInputs[i]);
-     // Serial.print("Read 0x"); Serial.println(x, HEX);
+     // FIRMATADEBUG.print("Read 0x"); FIRMATADEBUG.println(x, HEX);
       outputPort(i, x, forceSend);
     }
   }
@@ -209,7 +211,7 @@ void checkDigitalInputs(boolean forceSend = false)
  */
 void setPinModeCallback(byte pin, int mode)
 {
-  Serial.print("Setting pin #"); Serial.print(pin); Serial.print(" to "); Serial.println(mode);
+  //FIRMATADEBUG.print("Setting pin #"); FIRMATADEBUG.print(pin); FIRMATADEBUG.print(" to "); FIRMATADEBUG.println(mode);
   if ((pinConfig[pin] == I2C) && (isI2CEnabled) && (mode != I2C)) {
     // disable i2c so pins can be used for other functions
     // the following if statements should reconfigure the pins properly
@@ -227,14 +229,14 @@ void setPinModeCallback(byte pin, int mode)
     } else {
       portConfigInputs[pin/8] &= ~(1 << (pin & 7));
     }
-   // Serial.print(F("Setting pin #")); Serial.print(pin); Serial.print(F(" port config mask to = 0x")); 
-   // Serial.println(portConfigInputs[pin/8], HEX);
+   // FIRMATADEBUG.print(F("Setting pin #")); FIRMATADEBUG.print(pin); FIRMATADEBUG.print(F(" port config mask to = 0x")); 
+   // FIRMATADEBUG.println(portConfigInputs[pin/8], HEX);
   }
   pinState[pin] = 0;
   switch(mode) {
   case ANALOG:
     if (BLE_Firmata.IS_PIN_ANALOG(pin)) {
-      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to analog"));
+      FIRMATADEBUG.print(F("Set pin #")); FIRMATADEBUG.print(pin); FIRMATADEBUG.println(F(" to analog"));
       if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
         pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), INPUT); // disable output driver
       }
@@ -244,7 +246,7 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case INPUT:
     if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
-      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to input"));
+      FIRMATADEBUG.print(F("Set pin #")); FIRMATADEBUG.print(pin); FIRMATADEBUG.println(F(" to input"));
       
       if (AUTO_INPUT_PULLUPS) {
         pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), INPUT_PULLUP); // disable output driver
@@ -260,7 +262,7 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case OUTPUT:
     if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
-      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to output"));
+      FIRMATADEBUG.print(F("Set pin #")); FIRMATADEBUG.print(pin); FIRMATADEBUG.println(F(" to output"));
       digitalWrite(BLE_Firmata.PIN_TO_DIGITAL(pin), LOW); // disable PWM
       pinMode(BLE_Firmata.PIN_TO_DIGITAL(pin), OUTPUT);
       pinConfig[pin] = OUTPUT;
@@ -268,7 +270,7 @@ void setPinModeCallback(byte pin, int mode)
     break;
   case PWM:
     if (BLE_Firmata.IS_PIN_PWM(pin)) {
-      Serial.print(F("Set pin #")); Serial.print(pin); Serial.println(F(" to PWM"));
+      FIRMATADEBUG.print(F("Set pin #")); FIRMATADEBUG.print(pin); FIRMATADEBUG.println(F(" to PWM"));
       pinMode(BLE_Firmata.PIN_TO_PWM(pin), OUTPUT);
       analogWrite(BLE_Firmata.PIN_TO_PWM(pin), 0);
       pinConfig[pin] = PWM;
@@ -290,7 +292,7 @@ void setPinModeCallback(byte pin, int mode)
     }
     break;
   default:
-    Serial.print(F("Unknown pin mode")); // TODO: put error msgs in EEPROM
+    FIRMATADEBUG.print(F("Unknown pin mode")); // TODO: put error msgs in EEPROM
   }
   // TODO: save status to EEPROM here, if changed
 }
@@ -307,7 +309,7 @@ void analogWriteCallback(byte pin, int value)
     case PWM:
       if (BLE_Firmata.IS_PIN_PWM(pin))
         analogWrite(BLE_Firmata.PIN_TO_PWM(pin), value);
-        Serial.print("pwm("); Serial.print(BLE_Firmata.PIN_TO_PWM(pin)); Serial.print(","); Serial.print(value); Serial.println(")");
+        FIRMATADEBUG.print("pwm("); FIRMATADEBUG.print(BLE_Firmata.PIN_TO_PWM(pin)); FIRMATADEBUG.print(","); FIRMATADEBUG.print(value); FIRMATADEBUG.println(")");
         pinState[pin] = value;
       break;
     }
@@ -316,7 +318,7 @@ void analogWriteCallback(byte pin, int value)
 
 void digitalWriteCallback(byte port, int value)
 {
-  Serial.print("DWCx"); Serial.print(port, HEX); Serial.print(" "); Serial.println(value);
+  //FIRMATADEBUG.print("DWCx"); FIRMATADEBUG.print(port, HEX); FIRMATADEBUG.print(" "); FIRMATADEBUG.println(value);
   byte pin, lastPin, mask=1, pinWriteMask=0;
 
   if (port < TOTAL_PORTS) {
@@ -335,9 +337,9 @@ void digitalWriteCallback(byte port, int value)
       }
       mask = mask << 1;
     }
-    Serial.print(F("Write digital port #")); Serial.print(port); 
-    Serial.print(F(" = 0x")); Serial.print(value, HEX);
-    Serial.print(F(" mask = 0x")); Serial.println(pinWriteMask, HEX);
+    FIRMATADEBUG.print(F("Write digital port #")); FIRMATADEBUG.print(port); 
+    FIRMATADEBUG.print(F(" = 0x")); FIRMATADEBUG.print(value, HEX);
+    FIRMATADEBUG.print(F(" mask = 0x")); FIRMATADEBUG.println(pinWriteMask, HEX);
     BLE_Firmata.writePort(port, (byte)value, pinWriteMask);
   }
 }
@@ -353,10 +355,10 @@ void reportAnalogCallback(byte analogPin, int value)
   if (analogPin < BLE_Firmata._num_analogiopins) {
     if(value == 0) {
       analogInputsToReport = analogInputsToReport &~ (1 << analogPin);
-      Serial.print(F("Stop reporting analog pin #")); Serial.println(analogPin);
+      FIRMATADEBUG.print(F("Stop reporting analog pin #")); FIRMATADEBUG.println(analogPin);
     } else {
       analogInputsToReport |= (1 << analogPin);
-      Serial.print(F("Will report analog pin #")); Serial.println(analogPin);
+      FIRMATADEBUG.print(F("Will report analog pin #")); FIRMATADEBUG.println(analogPin);
     }
   }
   // TODO: save status to EEPROM here, if changed
@@ -365,7 +367,7 @@ void reportAnalogCallback(byte analogPin, int value)
 void reportDigitalCallback(byte port, int value)
 {
   if (port < TOTAL_PORTS) {
-    Serial.print(F("Will report 0x")); Serial.print(value, HEX); Serial.print(F(" digital mask on port ")); Serial.println(port);
+    //FIRMATADEBUG.print(F("Will report 0x")); FIRMATADEBUG.print(value, HEX); FIRMATADEBUG.print(F(" digital mask on port ")); FIRMATADEBUG.println(port);
     reportPINs[port] = (byte)value;
   }
   // do not disable analog reporting on these 8 pins, to allow some
@@ -388,13 +390,13 @@ void sysexCallback(byte command, byte argc, byte *argv)
   byte data;
   unsigned int delayTime; 
   
-  Serial.println("********** Sysex callback");
+  FIRMATADEBUG.println("********** Sysex callback");
   switch(command) {
   case I2C_REQUEST:
     mode = argv[1] & I2C_READ_WRITE_MODE_MASK;
     if (argv[1] & I2C_10BIT_ADDRESS_MODE_MASK) {
       //BLE_Firmata.sendString("10-bit addressing mode is not yet supported");
-      Serial.println(F("10-bit addressing mode is not yet supported"));
+      FIRMATADEBUG.println(F("10-bit addressing mode is not yet supported"));
       return;
     }
     else {
@@ -519,25 +521,26 @@ void sysexCallback(byte command, byte argc, byte *argv)
     bluefruit.write(START_SYSEX);
     bluefruit.write(CAPABILITY_RESPONSE);
 
-    Serial.print(" 0x"); Serial.print(START_SYSEX, HEX);
-    Serial.print(" 0x"); Serial.println(CAPABILITY_RESPONSE, HEX);
+    //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(START_SYSEX, HEX); FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(CAPABILITY_RESPONSE, HEX);
     delay(10);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
-      Serial.print("\t#"); Serial.println(pin);
+      //FIRMATADEBUG.print("\t#"); FIRMATADEBUG.println(pin);
       if (BLE_Firmata.IS_PIN_DIGITAL(pin)) {
         bluefruit.write((byte)INPUT);
         bluefruit.write(1);
         bluefruit.write((byte)OUTPUT);
         bluefruit.write(1);
 
-        Serial.print(" 0x"); Serial.print(INPUT, HEX);
-        Serial.print(" 0x"); Serial.print(1, HEX);
-        Serial.print(" 0x"); Serial.print(OUTPUT, HEX);
-        Serial.print(" 0x"); Serial.println(1, HEX);
+        /*
+        FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(INPUT, HEX);
+        FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(1, HEX);
+        FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(OUTPUT, HEX);
+        FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(1, HEX);
+        */
         delay(20);
       } else {
         bluefruit.write(127);
-        Serial.print(" 0x"); Serial.println(127, HEX);
+        //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(127, HEX);
         delay(20);
         continue;
       }
@@ -545,24 +548,21 @@ void sysexCallback(byte command, byte argc, byte *argv)
         bluefruit.write(ANALOG);
         bluefruit.write(10);
         
-        Serial.print(" 0x"); Serial.print(ANALOG, HEX);
-        Serial.print(" 0x"); Serial.println(10, HEX);
+        //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(ANALOG, HEX);  FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(10, HEX);
         delay(20);
       }
       if (BLE_Firmata.IS_PIN_PWM(pin)) {
         bluefruit.write(PWM);
         bluefruit.write(8);
 
-        Serial.print(" 0x"); Serial.print(PWM, HEX);
-        Serial.print(" 0x"); Serial.println(8, HEX);
+        //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(PWM, HEX); FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(8, HEX);
         delay(20);
       }
       if (BLE_Firmata.IS_PIN_SERVO(pin)) {
         bluefruit.write(SERVO);
         bluefruit.write(14);
 
-        Serial.print(" 0x"); Serial.print(SERVO, HEX);
-        Serial.print(" 0x"); Serial.println(14, HEX);
+        //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.print(SERVO, HEX);FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(14, HEX);
         delay(20);
       }
       if (BLE_Firmata.IS_PIN_I2C(pin)) {
@@ -571,10 +571,10 @@ void sysexCallback(byte command, byte argc, byte *argv)
         delay(20);
       }
       bluefruit.write(127);
-      Serial.print(" 0x"); Serial.println(127, HEX);
+      //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(127, HEX);
     }
     bluefruit.write(END_SYSEX);
-    Serial.print(" 0x"); Serial.println(END_SYSEX, HEX);
+    //FIRMATADEBUG.print(" 0x"); FIRMATADEBUG.println(END_SYSEX, HEX);
     break;
   case PIN_STATE_QUERY:
     if (argc > 0) {
@@ -592,7 +592,7 @@ void sysexCallback(byte command, byte argc, byte *argv)
     }
     break;
   case ANALOG_MAPPING_QUERY:
-    Serial.println("Analog mapping query");
+    FIRMATADEBUG.println("Analog mapping query");
     bluefruit.write(START_SYSEX);
     bluefruit.write(ANALOG_MAPPING_RESPONSE);
     for (byte pin=0; pin < TOTAL_PINS; pin++) {
@@ -637,7 +637,7 @@ void disableI2CPins() {
 void systemResetCallback()
 {
   // initialize a defalt state
-  Serial.println(F("***RESET***"));
+  FIRMATADEBUG.println(F("***RESET***"));
   // TODO: option to load config from EEPROM instead of default
   if (isI2CEnabled) {
   	disableI2CPins();
@@ -674,15 +674,18 @@ void systemResetCallback()
 
 void setup() 
 {
-  while (!Serial) delay(1);
-  
-  Serial.begin(9600);
-  Serial.println(F("Adafruit Bluefruit LE Firmata test"));
-  
-  Serial.print("Total pins: "); Serial.println(NUM_DIGITAL_PINS);
-  for (uint8_t i=0; i<sizeof(boards_analogiopins); i++) {
-    Serial.println(boards_analogiopins[i]);
+  if (WAITFORSERIAL) {
+    while (!FIRMATADEBUG) delay(1);
   }
+  
+  FIRMATADEBUG.begin(9600);
+  FIRMATADEBUG.println(F("Adafruit Bluefruit LE Firmata test"));
+  
+  FIRMATADEBUG.print("Total pins: "); FIRMATADEBUG.println(NUM_DIGITAL_PINS);
+  FIRMATADEBUG.print("Analog pins: "); FIRMATADEBUG.println(sizeof(boards_analogiopins));
+  //for (uint8_t i=0; i<sizeof(boards_analogiopins); i++) {
+  //  FIRMATADEBUG.println(boards_analogiopins[i]);
+  //}
   
   BLE_Firmata.setUsablePins(boards_digitaliopins, sizeof(boards_digitaliopins), 
     boards_analogiopins, sizeof(boards_analogiopins),
@@ -690,17 +693,17 @@ void setup()
     boards_servopins, sizeof(boards_servopins), SDA, SCL);
 
   /* Initialise the module */
-  Serial.print(F("Initialising the Bluefruit LE module: "));
+  FIRMATADEBUG.print(F("Initialising the Bluefruit LE module: "));
 
   if ( !bluefruit.begin(VERBOSE_MODE) )
   {
     error(F("Couldn't find Bluefruit, make sure it's in CoMmanD mode & check wiring?"));
   }
   
-  Serial.println( F("OK!") );
+  FIRMATADEBUG.println( F("OK!") );
 
   /* Perform a factory reset to make sure everything is in a known state */
-  Serial.println(F("Performing a factory reset: "));
+  FIRMATADEBUG.println(F("Performing a factory reset: "));
   if (! bluefruit.factoryReset() ){
        error(F("Couldn't factory reset"));
   }
@@ -708,32 +711,35 @@ void setup()
   /* Disable command echo from Bluefruit */
   bluefruit.echo(false);
 
-  Serial.println("Requesting Bluefruit info:");
+  FIRMATADEBUG.println("Requesting Bluefruit info:");
   /* Print Bluefruit information */
   bluefruit.info();
+  
+  FIRMATADEBUG.println("Setting name to BLE Firmata");
+  bluefruit.println("AT+GAPDEVNAME=BLE_Firmata");
   
   BTLEstatus = false;
 }
 
 void firmataInit() {
-  Serial.println(F("Init firmata"));
+  FIRMATADEBUG.println(F("Init firmata"));
   //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
-  //Serial.println(F("firmata analog"));
+  //FIRMATADEBUG.println(F("firmata analog"));
   BLE_Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
-  //Serial.println(F("firmata digital"));
+  //FIRMATADEBUG.println(F("firmata digital"));
   BLE_Firmata.attach(DIGITAL_MESSAGE, digitalWriteCallback);
-  //Serial.println(F("firmata analog report"));
+  //FIRMATADEBUG.println(F("firmata analog report"));
   BLE_Firmata.attach(REPORT_ANALOG, reportAnalogCallback);
-  //Serial.println(F("firmata digital report"));
+  //FIRMATADEBUG.println(F("firmata digital report"));
   BLE_Firmata.attach(REPORT_DIGITAL, reportDigitalCallback);
-  //Serial.println(F("firmata pinmode"));
+  //FIRMATADEBUG.println(F("firmata pinmode"));
   BLE_Firmata.attach(SET_PIN_MODE, setPinModeCallback);
-  //Serial.println(F("firmata sysex"));
+  //FIRMATADEBUG.println(F("firmata sysex"));
   BLE_Firmata.attach(START_SYSEX, sysexCallback);
-  //Serial.println(F("firmata reset"));
+  //FIRMATADEBUG.println(F("firmata reset"));
   BLE_Firmata.attach(SYSTEM_RESET, systemResetCallback);
 
-  Serial.println(F("Begin firmata"));
+  FIRMATADEBUG.println(F("Begin firmata"));
   BLE_Firmata.begin();
   systemResetCallback();  // reset to default config 
 }
@@ -755,13 +761,13 @@ void loop()
   if (BTLEstatus != lastBTLEstatus) {
     // print it out!
     if (BTLEstatus == true) {
-        Serial.println(F("* Connected!"));
+        FIRMATADEBUG.println(F("* Connected!"));
         // initialize Firmata cleanly
         bluefruit.setMode(BLUEFRUIT_MODE_DATA);
         firmataInit();
     }
     if (BTLEstatus == false) {
-        Serial.println(F("* Disconnected or advertising timed out"));
+        FIRMATADEBUG.println(F("* Disconnected or advertising timed out"));
     }
     // OK set the last status change to this one
     lastBTLEstatus = BTLEstatus;
@@ -773,11 +779,9 @@ void loop()
     return;
   }
   
-  //Serial.print('.');
-  
   // For debugging, see if there's data on the serial console, we would forwad it to BTLE
-  if (Serial.available()) {
-    bluefruit.write(Serial.read());
+  if (FIRMATADEBUG.available()) {
+    bluefruit.write(FIRMATADEBUG.read());
   }
   
   // Onto the Firmata main loop
@@ -785,13 +789,13 @@ void loop()
   byte pin, analogPin;
   
   /* DIGITALREAD - as fast as possible, check for changes and output them to the
-   * BTLE buffer using Serial.print()  */
+   * BTLE buffer using FIRMATADEBUG.print()  */
   checkDigitalInputs();  
 
   /* SERIALREAD - processing incoming messagse as soon as possible, while still
    * checking digital inputs.  */
   while(BLE_Firmata.available()) {
-    //Serial.println(F("*data available*"));
+    // FIRMATADEBUG.println(F("*data available*"));
     BLE_Firmata.processInput();
   }
   /* SEND FTDI WRITE BUFFER - make sure that the FTDI buffer doesn't go over
@@ -814,7 +818,7 @@ void loop()
     /* ANALOGREAD - do all analogReads() at the configured sampling interval */
 
     for(pin=0; pin<TOTAL_PINS; pin++) {
-      //Serial.print("pin #"); Serial.print(pin); Serial.print(" config = "); Serial.println(pinConfig[pin]);
+      // FIRMATADEBUG.print("pin #"); FIRMATADEBUG.print(pin); FIRMATADEBUG.print(" config = "); FIRMATADEBUG.println(pinConfig[pin]);
       if (BLE_Firmata.IS_PIN_ANALOG(pin) && (pinConfig[pin] == ANALOG)) {
         analogPin = BLE_Firmata.PIN_TO_ANALOG(pin);
 
@@ -822,7 +826,7 @@ void loop()
           int currentRead = analogRead(analogPin);
           
           if ((lastAnalogReads[analogPin] == -1) || (lastAnalogReads[analogPin] != currentRead)) {
-            //Serial.print(F("Analog")); Serial.print(analogPin); Serial.print(F(" = ")); Serial.println(currentRead);
+            //FIRMATADEBUG.print(F("Analog")); FIRMATADEBUG.print(analogPin); FIRMATADEBUG.print(F(" = ")); FIRMATADEBUG.println(currentRead);
             BLE_Firmata.sendAnalog(analogPin, currentRead);
             lastAnalogReads[analogPin] = currentRead;
           }
@@ -837,3 +841,4 @@ void loop()
     }
   }
 }
+
