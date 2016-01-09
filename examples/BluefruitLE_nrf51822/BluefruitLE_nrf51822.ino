@@ -7,7 +7,7 @@
 #endif
 
 // Change this to whatever is the Serial console you want, either Serial or SerialUSB
-#define FIRMATADEBUG    SerialUSB
+#define FIRMATADEBUG    Serial
 // Pause for Serial console before beginning?
 #define WAITFORSERIAL   true
 // Print all BLE interactions?
@@ -24,7 +24,7 @@ that are used for accessories or for talking to the BLE module!
 */
 
 /************** For Bluefruit Micro or Feather 32u4 Bluefruit ************/
-//uint8_t boards_digitaliopins[] = {0,1,2,3,5,6,9,10,11,12,13,A0,A1,A2,A3,A4,A5};
+uint8_t boards_digitaliopins[] = {0,1,2,3,5,6,9,10,11,12,13,A0,A1,A2,A3,A4,A5};
 
 /************** For UNO + nRF58122 SPI & shield ************/
 //uint8_t boards_digitaliopins[] = {2, 3, 5, 6, 9, 10, A0, A1, A2, A3, A4, A5}; 
@@ -68,12 +68,28 @@ that are used for accessories or for talking to the BLE module!
 #include "Adafruit_BluefruitLE_UART.h"
 #include "BluefruitConfig.h"
 
-#define AUTO_INPUT_PULLUPS true
 
+// Create the bluefruit object, either software serial...uncomment these lines
+/*
+SoftwareSerial bluefruitSS = SoftwareSerial(BLUEFRUIT_SWUART_TXD_PIN, BLUEFRUIT_SWUART_RXD_PIN);
+
+Adafruit_BluefruitLE_UART bluefruit(bluefruitSS, BLUEFRUIT_UART_MODE_PIN,
+                      BLUEFRUIT_UART_CTS_PIN, BLUEFRUIT_UART_RTS_PIN);
+*/
+
+/* ...or hardware serial, which does not need the RTS/CTS pins. Uncomment this line */
+// Adafruit_BluefruitLE_UART bluefruit(BLUEFRUIT_HWSERIAL_NAME, BLUEFRUIT_UART_MODE_PIN);
 
 /* ...hardware SPI, using SCK/MOSI/MISO hardware SPI pins and then user selected CS/IRQ/RST */
 Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_CS, BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
 
+/* ...software SPI, using SCK/MOSI/MISO user-defined SPI pins and then user selected CS/IRQ/RST */
+//Adafruit_BluefruitLE_SPI bluefruit(BLUEFRUIT_SPI_SCK, BLUEFRUIT_SPI_MISO,
+//                             BLUEFRUIT_SPI_MOSI, BLUEFRUIT_SPI_CS,
+//                             BLUEFRUIT_SPI_IRQ, BLUEFRUIT_SPI_RST);
+
+
+#define AUTO_INPUT_PULLUPS true
 
 // our current connection status
 boolean lastBTLEstatus, BTLEstatus;
@@ -841,4 +857,3 @@ void loop()
     }
   }
 }
-
