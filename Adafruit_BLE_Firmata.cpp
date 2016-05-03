@@ -165,6 +165,8 @@ int Adafruit_BLE_FirmataClass::processInput(void)
     
   if (inputData == -1) return -1;
 
+  //Serial.print(F(" 0x")); Serial.print(inputData, HEX); 
+
   if (parsingSysex) {
     if(inputData == END_SYSEX) {
       //stop sysex byte      
