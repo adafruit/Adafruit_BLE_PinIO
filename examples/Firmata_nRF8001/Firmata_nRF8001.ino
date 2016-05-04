@@ -685,6 +685,7 @@ void setup()
   if (! bluefruit.begin()) {
     error(F("Failed"));
   }
+  bluefruit.setDeviceName("ADA_BLE");
   FIRMATADEBUG.println(F("Done"));
   BTLEstatus = lastBTLEstatus = ACI_EVT_DISCONNECTED;
 }
