@@ -41,7 +41,7 @@ uint8_t boards_digitaliopins[] = {0,1,2,3,5,6,9,10,11,12,13,A0,A1,A2,A3,A4,A5};
 #elif defined(__AVR_ATmega32U4__)
   uint8_t boards_analogiopins[] = {A0, A1, A2, A3, A4, A5};  // A0 == digital 14, etc
   uint8_t boards_pwmpins[] = {3, 5, 6, 9, 10, 11, 13};
-  uint8_t boards_servopins[] = {9, 10};
+  uint8_t boards_servopins[] = {3, 5, 6, 9, 10, 11, 13};
   uint8_t boards_i2cpins[] = {SDA, SCL};
 #elif defined(__SAMD21G18A__)
   #define SDA PIN_WIRE_SDA
@@ -739,7 +739,7 @@ void setup()
 
 void firmataInit() {
   FIRMATADEBUG.println(F("Init firmata"));
-  //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+  BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
   //FIRMATADEBUG.println(F("firmata analog"));
   BLE_Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
   //FIRMATADEBUG.println(F("firmata digital"));
