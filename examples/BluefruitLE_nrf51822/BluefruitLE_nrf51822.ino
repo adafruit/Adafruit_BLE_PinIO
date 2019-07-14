@@ -739,7 +739,7 @@ void setup()
 
 void firmataInit() {
   FIRMATADEBUG.println(F("Init firmata"));
-  //BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
+  BLE_Firmata.setFirmwareVersion(FIRMATA_MAJOR_VERSION, FIRMATA_MINOR_VERSION);
   //FIRMATADEBUG.println(F("firmata analog"));
   BLE_Firmata.attach(ANALOG_MESSAGE, analogWriteCallback);
   //FIRMATADEBUG.println(F("firmata digital"));
