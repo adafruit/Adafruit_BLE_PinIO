@@ -9,7 +9,7 @@
 // Change this to whatever is the Serial console you want, either Serial or SerialUSB
 #define FIRMATADEBUG    Serial
 // Pause for Serial console before beginning?
-#define WAITFORSERIAL   true
+#define WAITFORSERIAL   false
 // Print all BLE interactions?
 #define VERBOSE_MODE    false
 
