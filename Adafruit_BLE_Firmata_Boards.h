@@ -6,7 +6,7 @@
 #include <inttypes.h>
 
 #if defined(ARDUINO) && ARDUINO >= 100
-#include "Arduino.h"	// for digitalRead, digitalWrite, etc
+#include "Arduino.h" // for digitalRead, digitalWrite, etc
 #else
 #include "WProgram.h"
 #endif
@@ -23,7 +23,7 @@
     Firmata Hardware Abstraction Layer
 
 Firmata is built on top of the hardware abstraction functions of Arduino,
-specifically digitalWrite, digitalRead, analogWrite, analogRead, and 
+specifically digitalWrite, digitalRead, analogWrite, analogRead, and
 pinMode.  While these functions offer simple integer pin numbers, Firmata
 needs more information than is provided by Arduino.  This file provides
 all other hardware specific details.  To make Firmata support a new board,
@@ -124,12 +124,7 @@ writePort(port, value, bitmask):  Write an 8 bit port.
  * Board Specific Configuration
  *============================================================================*/
 
-
-#define VERSION_BLINK_PIN       99
+#define VERSION_BLINK_PIN 99
 #define ARDUINO_PINOUT_OPTIMIZE 0
 
-
-
-
 #endif /* BLE_Firmata_Boards_h */
-
