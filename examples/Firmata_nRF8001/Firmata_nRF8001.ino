@@ -49,7 +49,6 @@ uint8_t boards_digitaliopins[] = {3, 4, 5, 6, 7, 8, A0, A1, A2, A3, A4, A5};
   #define NUM_DIGITAL_PINS 26
 #endif
 
-
 #define TOTAL_PINS     NUM_DIGITAL_PINS   /* highest number in boards_digitaliopins MEMEFIXME:automate */
 #define TOTAL_PORTS    ((TOTAL_PINS + 7) / 8)
 

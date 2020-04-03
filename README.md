@@ -1,3 +1,4 @@
+# Adafruit BLE PinIO [![Build Status](https://github.com/adafruit/Adafruit_BLE_PinIO/workflows/Arduino%20Library%20CI/badge.svg)](https://github.com/adafruit/Adafruit_BLE_PinIO/actions)
 #Firmata
 
 Firmata is a protocol for communicating with microcontrollers from software on a host computer. The [protocol](http://firmata.org/wiki/Protocol) can be implemented in firmware on any microcontroller architecture as well as software on any host computer software package. The arduino repository described here is a Firmata library for Arduino and Arduino-compatible devices. See the [firmata wiki](http://firmata.org/wiki/Main_Page) for additional informataion. If you would like to contribute to Firmata, please see the [Contributing](#contributing) section below.
@@ -102,6 +103,17 @@ instructions above for pre Arduino 1.5 versions but update the path as follows:
 <a name="contributing" />
 ##Contributing
 
+
+# Dependencies
+
+* [Adafruit nRF8001](https://github.com/adafruit/Adafruit_nRF8001)
+* [AdafAdafruit BluefruitLE nRF51](https://github.com/adafruit/Adafruit_BluefruitLE_nRF51)
+
+# Contributing
+
+Contributions are welcome! Please read our [Code of Conduct](https://github.com/adafruit/Adafruit_AMRadio/blob/master/CODE_OF_CONDUCT.md>)
+before contributing to help this project stay welcoming.
+
 If you discover a bug or would like to propose a new feature, please open a new [issue](https://github.com/firmata/arduino/issues?sort=created&state=open). Due to the limited memory of standard Arduino boards we cannot add every requested feature to StandardFirmata. Requests to add new features to StandardFirmata will be evaluated by the Firmata developers. However it is still possible to add new features to other Firmata implementations (Firmata is a protocol whereas StandardFirmata is just one of many possible implementations).
 
 To contribute, fork this respository and create a new topic branch for the bug, feature or other existing issue you are addressing. Submit the pull request against the *dev* branch.
@@ -123,3 +135,26 @@ Maintain the existing code style:
   // do something
 }
 </pre>
+
+## Documentation and doxygen
+Documentation is produced by doxygen. Contributions should include documentation for any new code added.
+
+Some examples of how to use doxygen can be found in these guide pages:
+
+https://learn.adafruit.com/the-well-automated-arduino-library/doxygen
+
+https://learn.adafruit.com/the-well-automated-arduino-library/doxygen-tips
+
+Copyright (C) 2006-2008 Hans-Christoph Steiner.  All rights reserved.
+
+Modified for Adafruit_BLE_Uart by Limor Fried/Kevin Townsend for
+Adafruit Industries, 2014
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+See file LICENSE.txt for further informations on licensing terms.
+## Installation
+To install, use the Arduino Library Manager and search for "Adafruit BLEFirmata" and install the library.
