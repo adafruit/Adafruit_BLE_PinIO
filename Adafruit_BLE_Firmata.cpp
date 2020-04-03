@@ -422,7 +422,8 @@ void Adafruit_BLE_FirmataClass::sendString(const char *string) {
  * and SET_DIGITAL_PIN_VALUE).
  * @param command The ID of the command to attach a callback function to.
  * @param newFunction A reference to the callback function to attach.
- */void Adafruit_BLE_FirmataClass::attach(byte command,
+ */
+void Adafruit_BLE_FirmataClass::attach(byte command,
                                        callbackFunction newFunction) {
   switch (command) {
   case ANALOG_MESSAGE:
